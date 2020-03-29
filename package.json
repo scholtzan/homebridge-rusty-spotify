@@ -1,0 +1,22 @@
+{
+  "name": "homebridge-rusty-spotify",
+  "collaborators": [
+    "anna <anna@scholtzan.net>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "homebridge_rusty_spotify_bg.wasm",
+    "homebridge_rusty_spotify.js",
+    "homebridge_rusty_spotify_bg.js",
+    "homebridge_rusty_spotify.d.ts"
+  ],
+  "main": "index.js",
+  "keywords": [
+    "homebridge-plugin",
+    "homekit"
+  ],
+  "engines": {
+    "homebridge": ">=0.4.0",
+    "node": ">=10.0.0"
+  }
+}

@@ -1,4 +1,8 @@
-const SamplePlatform = require('./homebridge_rusty_spotify.js').SamplePlatform;
+const SpotifyAccessory = require('./homebridge_rusty_spotify.js').SpotifyAccessory;
+
+function partial(fn /*, rest args */){
+  return fn.bind.apply(fn, Array.apply(null, arguments));
+}
 
 module.exports = function(homebridge) {
   console.log("homebridge API version: " + homebridge.version);
@@ -8,10 +12,11 @@ module.exports = function(homebridge) {
 
   // Service and Characteristic are from hap-nodejs
   Service = homebridge.hap.Service;
+  let Switch = new homebridge.hap.Service.Switch("SpotifyAccessory");
   Characteristic = homebridge.hap.Characteristic;
-  UUIDGen = homebridge.hap.uuid;
-  
+
   // For platform plugin to be considered as dynamic platform plugin,
   // registerPlatform(pluginName, platformName, constructor, dynamic), dynamic must be true
-  homebridge.registerPlatform("homebridge-samplePlatform", "SamplePlatform", SamplePlatform, true);
+  constructor = partial(SpotifyAccessory, Switch);
+  homebridge.registerAccessory("homebridge-rusty-spotify", "SpotifyAccessory", constructor, true);
 }
