@@ -1,3 +1,4 @@
+const Request = require('request');
 const SpotifyAccessory = require('./homebridge_rusty_spotify.js').SpotifyAccessory;
 
 function partial(fn /*, rest args */){

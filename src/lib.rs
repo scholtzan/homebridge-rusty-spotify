@@ -2,5 +2,7 @@
 extern crate serde_derive;
 extern crate js_sys;
 extern crate web_sys;
+extern crate base64;
 
+mod spotify_api;
 mod spotify_accessory;

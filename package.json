@@ -18,5 +18,8 @@
   "engines": {
     "homebridge": ">=0.4.0",
     "node": ">=10.0.0"
+  },
+  "dependencies": {
+    "request": "^2.88.2"
   }
 }
