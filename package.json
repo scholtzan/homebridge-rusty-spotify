@@ -20,6 +20,6 @@
     "node": ">=10.0.0"
   },
   "dependencies": {
-    "request": "^2.88.2"
+    "node-fetch": "^2.6.0"
   }
 }

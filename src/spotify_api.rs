@@ -3,8 +3,11 @@ use std::rc::Rc;
 use web_sys::{console, Request, RequestInit, RequestMode, Response};
 use base64::encode;
 use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen::JsCast;
-use futures::executor::block_on;
+use crate::node_fetch::{fetch, FetchMethod};
+use std::collections::HashMap;
+
 
 #[derive(Serialize, Deserialize)]
 struct SpotifyAuthorizationResponse {
@@ -38,51 +41,29 @@ impl SpotifyApi {
         let client_secret = Rc::clone(&self.client_secret);
         let mut access_token = Rc::clone(&self.access_token);
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::Cors);
-
         let url = "https://accounts.spotify.com/api/token";
+        let token = format!("{}:{}", client_id, client_secret);
+        let base64_token = encode(token);
+        let authorization_header = format!("Basic {}", base64_token);
 
-        match Request::new_with_str_and_init(url, &opts) {
-            Ok(request) => {
-                let token = format!("{}:{}", client_id, client_secret);
-                let base64_token = encode(token);
-                let authorization_header = format!("Basic {}", base64_token);
+        console::log_1(&format!("base64 token {:?}", base64_token).into());
 
-                console::log_1(&format!("base64 token {:?}", base64_token).into());
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_owned(), "application/x-www-form-urlencoded;charset=UTF-8".to_owned());
+        headers.insert("Authorization".to_owned(), authorization_header);
 
-                request.headers().set("Authorization", &authorization_header);
+        let mut body = "grant_type=client_credentials";
 
-                let window = web_sys::window().unwrap();
+        let r = spawn_local(async move {
+            console::log_1(&format!("1").into());
+            let result = fetch(url, FetchMethod::Post, body, headers).await.unwrap();
+            console::log_1(&format!("2").into());
 
-                block_on(async {
-                    match JsFuture::from(window.fetch_with_request(&request)).await {
-                        Ok(response) => {
-                            let resp: Response = response.dyn_into().unwrap();
+            let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
+            console::log_1(&format!("3 {:?}", json.access_token).into());
 
-                            match resp.json() {
-                                Ok(json_future) => {
-                                    match JsFuture::from(json_future).await {
-                                        Ok(json) => {
-                                            let authorization_response: SpotifyAuthorizationResponse = json.into_serde().unwrap();
-                                            access_token = Rc::new(authorization_response.access_token);
+        });
 
-                                            console::log_1(&"Access token".into());
-                                            console::log_1(&(&*access_token).into());
-                                        },
-                                        _ => console::log_1(&"Error processing Spotify authorization JSON".into())
-                                    }
-                                },
-                                _ => console::log_1(&"Error JSON Spotify authorization response".into())
-                            }
-                        },
-                        _ => console::log_1(&"Error processing Spotify authorization response".into())
-                    }
-                });
-            },
-            e => console::log_1(&format!("Error authorizing to Spotify {:?}", e).into())
-        }
     }
 }
 
