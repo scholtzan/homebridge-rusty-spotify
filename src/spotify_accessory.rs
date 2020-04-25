@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::future::Future;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{spawn_local, future_to_promise};
 use base64::encode;
 use crate::spotify_api::SpotifyApi;
 
@@ -85,8 +86,17 @@ impl SpotifyAccessory {
 
         let get_on = {
             let on = Rc::clone(&self.on);
+            let api = Rc::clone(&self.api);
+
             Closure::wrap(Box::new(move |callback: Function| {
                 console::log_1(&"get on".into());
+
+                let pause_request = api.pause();
+
+                spawn_local(async move {
+                    JsFuture::from(pause_request).await.unwrap().as_string().unwrap();
+                });
+
                 callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(*on))).unwrap();
             }) as Box<dyn FnMut(Function)>)
         };
@@ -98,8 +108,12 @@ impl SpotifyAccessory {
             Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
                 console::log_1(&"set on".into());
                 on = Rc::new(new_on);
+                let play_request = api.play();
 
-                api.authorize();
+                spawn_local(async move {
+                    JsFuture::from(play_request).await.unwrap().as_string().unwrap();
+                });
+
                 callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(*on))).unwrap();
             }) as Box<dyn FnMut(bool, Function)>)
         };

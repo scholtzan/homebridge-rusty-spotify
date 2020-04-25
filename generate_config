@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+"""Script to retrieve an access and refresh token for using the Spotify API"""
+
+from argparse import ArgumentParser
+import json
+import spotipy
+import spotipy.util as util
+
+
+DEFAULT_REDIRECT_URI = "http://localhost/callback"
+
+
+parser = ArgumentParser(description=__doc__)
+parser.add_argument(
+    "--client_id",
+    "--client-id",
+    help="Spotify client ID",
+)
+parser.add_argument(
+    "--client_secret",
+    "--client-secret",
+    help="Spotify client secret",
+)
+parser.add_argument(
+    "--redirect_uri",
+    "--redirect-uri",
+    default=DEFAULT_REDIRECT_URI,
+    help="Redirect URI"
+)
+parser.add_argument(
+    "--username",
+    help="Spotify username"
+)
+
+
+def main():
+    args = parser.parse_args()
+
+    scope = "streaming user-read-playback-state"
+
+    auth = spotipy.SpotifyOAuth(
+        args.client_id,
+        args.client_secret,
+        args.redirect_uri,
+        username=args.username,
+        scope=scope,
+        show_dialog=False
+    )
+
+    token_info = auth.get_cached_token()
+
+    if not token_info:
+        code = auth.get_auth_response()
+        token_info = auth.get_access_token(code, as_dict=True)
+    
+    config = {
+        "accessory": "SpotifyAccessory",
+        "name": "SpotifyAccessory",
+        "client_id": args.client_id,
+        "client_secret": args.client_secret,
+        "refresh_token": token_info["refresh_token"],
+        "access_token": token_info["access_token"]
+    }
+
+    print(json.dumps(config, indent=2))
+
+if __name__ == "__main__":
+    main()
