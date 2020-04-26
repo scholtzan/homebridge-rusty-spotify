@@ -69,7 +69,7 @@ impl SpotifyApi {
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(url, FetchMethod::Put, "", headers).await.unwrap();
+            let result = fetch(url, FetchMethod::Put, "", headers, true).await.unwrap();
             console::log_1(&format!("Playback result {:?}", result).into());
             Ok(JsValue::NULL)
         })
@@ -88,7 +88,7 @@ impl SpotifyApi {
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(url, FetchMethod::Put, "", headers).await.unwrap();
+            let result = fetch(url, FetchMethod::Put, "", headers, true).await.unwrap();
             console::log_1(&format!("Playback stop result {:?}", result).into());
             Ok(JsValue::NULL)
         })
@@ -120,7 +120,7 @@ impl SpotifyApi {
                 return Ok(JsValue::from((*access_token).clone()))
             }
 
-            let result = fetch(url, FetchMethod::Post, &body, headers).await.unwrap();
+            let result = fetch(url, FetchMethod::Post, &body, headers, false).await.unwrap();
 
             let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
             access_token_timestamp = Rc::new(Date::now());

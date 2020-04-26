@@ -75,16 +75,6 @@ impl SpotifyAccessory {
         }
     }
 
-    fn stop(&self){
-        console::log_1(&"stop music".into());
-    }
-
-    fn start(&self) -> Box<dyn Fn()> {
-        return Box::new(move || {
-            console::log_1(&"start music".into());
-        })
-    }
-
     #[wasm_bindgen(js_name = getServices)]
     pub fn get_services(&self) -> Array {
         console::log_1(&"get Spotify service 1".into());
@@ -95,14 +85,19 @@ impl SpotifyAccessory {
 
             Closure::wrap(Box::new(move |callback: Function| {
                 console::log_1(&"get on".into());
-
+                let play_request = api.play();
                 let pause_request = api.pause();
+                let on = *on;
 
-                spawn_local(async move {
-                    JsFuture::from(pause_request).await.unwrap().as_string().unwrap();
-                });
+//                spawn_local(async move {
+//                    if on {
+//                        JsFuture::from(play_request).await.unwrap();
+//                    } else {
+//                        JsFuture::from(pause_request).await.unwrap();
+//                    }
+//                });
 
-                callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(*on))).unwrap();
+                callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(on))).unwrap();
             }) as Box<dyn FnMut(Function)>)
         };
 
@@ -111,13 +106,14 @@ impl SpotifyAccessory {
             let api = Rc::clone(&self.api);
 
             Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
-                console::log_1(&"set on".into());
+                console::log_1(&format!("set on {:?}", new_on).into());
                 on = Rc::new(new_on);
-                let play_request = api.play();
 
-                spawn_local(async move {
-                    JsFuture::from(play_request).await.unwrap().as_string().unwrap();
-                });
+                if new_on {
+                    api.play();
+                } else {
+                    api.pause();
+                }
 
                 callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(*on))).unwrap();
             }) as Box<dyn FnMut(bool, Function)>)

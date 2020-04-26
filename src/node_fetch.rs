@@ -47,7 +47,7 @@ struct RequestOptions {
 }
 
 
-pub async fn fetch(url: &str, method: FetchMethod, body: &str, headers: HashMap<String, String>) -> Result<JsValue, JsValue> {
+pub async fn fetch(url: &str, method: FetchMethod, body: &str, headers: HashMap<String, String>, empty_response: bool) -> Result<JsValue, JsValue> {
     let fetch = require("node-fetch");
     let options = RequestOptions {
         method: method.as_str().to_owned(),
@@ -62,13 +62,16 @@ pub async fn fetch(url: &str, method: FetchMethod, body: &str, headers: HashMap<
         Ok(p) => {
             let promise = Promise::from(p);
             let resp_value = JsFuture::from(promise).await?;
-            console::log_1(&format!("00 {:?}", resp_value).into());
-
             let resp: Response = resp_value.unchecked_into();
-            let json: JsValue = JsFuture::from(resp.json()).await?;
-            console::log_1(&format!("JSON {:?}", json).into());
 
-            Ok(json)
+            if empty_response {
+                Ok(JsValue::NULL)
+            } else {
+                let json: JsValue = JsFuture::from(resp.json()).await?;
+                console::log_1(&format!("JSON {:?}", json).into());
+
+                Ok(json)
+            }
         },
         _ => {
             console::log_1(&"Error executing fetch request".into());
