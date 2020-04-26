@@ -38,7 +38,8 @@ extern "C" {
 #[derive(Serialize, Deserialize)]
 struct Config {
     pub client_id: String,
-    pub client_secret: String
+    pub client_secret: String,
+    pub refresh_token: String
 }
 
 #[wasm_bindgen]
@@ -59,7 +60,11 @@ impl SpotifyAccessory {
         let config: Config = config.into_serde().unwrap();
         // config: https://rustwasm.github.io/docs/wasm-bindgen/reference/accessing-properties-of-untyped-js-values.html
 
-        let api = SpotifyApi::new(config.client_id.clone(), config.client_secret.clone());
+        let api = SpotifyApi::new(
+            config.client_id.clone(),
+            config.client_secret.clone(),
+            config.refresh_token.clone()
+        );
 
         SpotifyAccessory {
             log,

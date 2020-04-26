@@ -59,8 +59,7 @@ def main():
         "name": "SpotifyAccessory",
         "client_id": args.client_id,
         "client_secret": args.client_secret,
-        "refresh_token": token_info["refresh_token"],
-        "access_token": token_info["access_token"]
+        "refresh_token": token_info["refresh_token"]
     }
 
     print(json.dumps(config, indent=2))
