@@ -99,6 +99,24 @@ impl SpotifyApi {
         })
     }
 
+    pub fn volume(&self, volume: u32) -> Promise {
+        let authorize_request = self.authorize();
+
+        future_to_promise(async move {
+            console::log_1(&"Set volume".into());
+            let access_token: String = JsFuture::from(authorize_request).await.unwrap().as_string().unwrap();
+
+            let url = format!("https://api.spotify.com/v1/me/player/volume?volume_percent={}", volume);
+            let authorization_header = format!("Bearer {}", access_token);
+
+            let mut headers = HashMap::new();
+            headers.insert("Authorization".to_owned(), authorization_header);
+
+            let result = fetch(&url, FetchMethod::Put, "", headers, true).await.unwrap();
+            Ok(JsValue::NULL)
+        })
+    }
+
     pub fn authorize(&self) -> Promise {
         console::log_1(&"Authorize to Spotify".into());
 
