@@ -1,14 +1,12 @@
-use wasm_bindgen::prelude::*;
-use std::rc::Rc;
-use js_sys::{Array, Function, Promise, Date};
-use web_sys::{console, Request, RequestInit, RequestMode, Response};
-use base64::encode;
-use wasm_bindgen_futures::JsFuture;
-use wasm_bindgen_futures::{spawn_local, future_to_promise};
-use wasm_bindgen::JsCast;
-use futures::Future;
 use crate::node_fetch::{fetch, FetchMethod};
+use base64::encode;
+use js_sys::{Date, Promise};
 use std::collections::HashMap;
+use std::rc::Rc;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::future_to_promise;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::console;
 
 const ACCESS_TOKEN_LIFETIME: f64 = 3000.0;
 const HOMEBRIDGE_CONFIG: &str = "~/.homebridge/config.json";
@@ -31,7 +29,7 @@ struct SpotifyAuthorizationResponse {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: u64,
-    pub refresh_token: Option<String>
+    pub refresh_token: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -40,7 +38,7 @@ pub struct SpotifyApi {
     client_secret: String,
     access_token: Rc<String>,
     refresh_token: Rc<String>,
-    access_token_timestamp: Rc<f64>
+    access_token_timestamp: Rc<f64>,
 }
 
 #[wasm_bindgen]
@@ -52,7 +50,7 @@ impl SpotifyApi {
             client_secret,
             access_token: Rc::new("".to_owned()),
             refresh_token: Rc::new(refresh_token),
-            access_token_timestamp: Rc::new(0.0)
+            access_token_timestamp: Rc::new(0.0),
         }
     }
 
@@ -61,7 +59,11 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Start playback".into());
-            let access_token: String = JsFuture::from(authorize_request).await.unwrap().as_string().unwrap();
+            let access_token: String = JsFuture::from(authorize_request)
+                .await
+                .unwrap()
+                .as_string()
+                .unwrap();
 
             let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
 
@@ -74,8 +76,9 @@ impl SpotifyApi {
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(&url, FetchMethod::Put, "", headers, true).await.unwrap();
-            console::log_1(&format!("Playback result {:?}", result).into());
+            let _ = fetch(&url, FetchMethod::Put, "", headers, true)
+                .await
+                .unwrap();
             Ok(JsValue::NULL)
         })
     }
@@ -85,7 +88,11 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Stop playback".into());
-            let access_token: String = JsFuture::from(authorize_request).await.unwrap().as_string().unwrap();
+            let access_token: String = JsFuture::from(authorize_request)
+                .await
+                .unwrap()
+                .as_string()
+                .unwrap();
 
             let url = "https://api.spotify.com/v1/me/player/pause";
             let authorization_header = format!("Bearer {}", access_token);
@@ -93,8 +100,9 @@ impl SpotifyApi {
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(url, FetchMethod::Put, "", headers, true).await.unwrap();
-            console::log_1(&format!("Playback stop result {:?}", result).into());
+            let _ = fetch(url, FetchMethod::Put, "", headers, true)
+                .await
+                .unwrap();
             Ok(JsValue::NULL)
         })
     }
@@ -104,15 +112,24 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Set volume".into());
-            let access_token: String = JsFuture::from(authorize_request).await.unwrap().as_string().unwrap();
+            let access_token: String = JsFuture::from(authorize_request)
+                .await
+                .unwrap()
+                .as_string()
+                .unwrap();
 
-            let url = format!("https://api.spotify.com/v1/me/player/volume?volume_percent={}", volume);
+            let url = format!(
+                "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
+                volume
+            );
             let authorization_header = format!("Bearer {}", access_token);
 
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(&url, FetchMethod::Put, "", headers, true).await.unwrap();
+            let _ = fetch(&url, FetchMethod::Put, "", headers, true)
+                .await
+                .unwrap();
             Ok(JsValue::NULL)
         })
     }
@@ -130,20 +147,22 @@ impl SpotifyApi {
         let authorization_header = format!("Basic {}", base64_token);
 
         future_to_promise(async move {
-            console::log_1(&"Get new access token from Spotify".into());
-
             let mut headers = HashMap::new();
-            headers.insert("Content-Type".to_owned(), "application/x-www-form-urlencoded;charset=UTF-8".to_owned());
+            headers.insert(
+                "Content-Type".to_owned(),
+                "application/x-www-form-urlencoded;charset=UTF-8".to_owned(),
+            );
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let mut body = format!("grant_type=refresh_token&refresh_token={}", *refresh_token);
+            let body = format!("grant_type=refresh_token&refresh_token={}", *refresh_token);
 
             if Date::now() - *access_token_timestamp <= ACCESS_TOKEN_LIFETIME {
-                console::log_1(&"Use cached access token".into());
-                return Ok(JsValue::from((*access_token).clone()))
+                return Ok(JsValue::from((*access_token).clone()));
             }
 
-            let result = fetch(url, FetchMethod::Post, &body, headers, false).await.unwrap();
+            let result = fetch(url, FetchMethod::Post, &body, headers, false)
+                .await
+                .unwrap();
 
             let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
             access_token_timestamp = Rc::new(Date::now());
@@ -154,7 +173,8 @@ impl SpotifyApi {
                 let fs = require("fs");
 
                 let config_string = fs.read_file(HOMEBRIDGE_CONFIG);
-                let new_config_string = config_string.replace(&(*refresh_token), &new_refresh_token.clone());
+                let new_config_string =
+                    config_string.replace(&(*refresh_token), &new_refresh_token.clone());
                 fs.write_file(HOMEBRIDGE_CONFIG, new_config_string);
                 refresh_token = Rc::new(new_refresh_token);
             }
@@ -163,4 +183,3 @@ impl SpotifyApi {
         })
     }
 }
-
