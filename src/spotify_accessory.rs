@@ -39,7 +39,9 @@ extern "C" {
 struct Config {
     pub client_id: String,
     pub client_secret: String,
-    pub refresh_token: String
+    pub refresh_token: String,
+    pub fade: Option<usize>,
+    pub device_id: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -85,17 +87,7 @@ impl SpotifyAccessory {
 
             Closure::wrap(Box::new(move |callback: Function| {
                 console::log_1(&"get on".into());
-                let play_request = api.play();
-                let pause_request = api.pause();
                 let on = *on;
-
-//                spawn_local(async move {
-//                    if on {
-//                        JsFuture::from(play_request).await.unwrap();
-//                    } else {
-//                        JsFuture::from(pause_request).await.unwrap();
-//                    }
-//                });
 
                 callback.apply(&JsValue::null(), &Array::of2(&JsValue::null(), &JsValue::from(on))).unwrap();
             }) as Box<dyn FnMut(Function)>)
@@ -104,13 +96,14 @@ impl SpotifyAccessory {
         let set_on = {
             let mut on = Rc::clone(&self.on);
             let api = Rc::clone(&self.api);
+            let device_id = self.config.device_id.clone();
 
             Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
                 console::log_1(&format!("set on {:?}", new_on).into());
                 on = Rc::new(new_on);
 
                 if new_on {
-                    api.play();
+                    api.play(device_id.clone());
                 } else {
                     api.pause();
                 }

@@ -56,20 +56,25 @@ impl SpotifyApi {
         }
     }
 
-    pub fn play(&self) -> Promise {
+    pub fn play(&self, device_id: Option<String>) -> Promise {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
             console::log_1(&"Start playback".into());
             let access_token: String = JsFuture::from(authorize_request).await.unwrap().as_string().unwrap();
 
-            let url = "https://api.spotify.com/v1/me/player/play";
+            let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
+
+            if let Some(device_id) = device_id {
+                url.push_str(&format!("?device_id={}", device_id));
+            }
+
             let authorization_header = format!("Bearer {}", access_token);
 
             let mut headers = HashMap::new();
             headers.insert("Authorization".to_owned(), authorization_header);
 
-            let result = fetch(url, FetchMethod::Put, "", headers, true).await.unwrap();
+            let result = fetch(&url, FetchMethod::Put, "", headers, true).await.unwrap();
             console::log_1(&format!("Playback result {:?}", result).into());
             Ok(JsValue::NULL)
         })
