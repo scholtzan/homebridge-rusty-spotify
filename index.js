@@ -7,16 +7,15 @@ function partial(fn /*, rest args */){
 module.exports = function(homebridge) {
   console.log("homebridge API version: " + homebridge.version);
 
-  // Accessory must be created from PlatformAccessory Constructor
   Accessory = homebridge.platformAccessory;
-
-  // Service and Characteristic are from hap-nodejs
   Service = homebridge.hap.Service;
-  let Switch = new homebridge.hap.Service.Switch("SpotifyAccessory");
+  let Switch = new Service.Lightbulb("SpotifyAccessory");
   Characteristic = homebridge.hap.Characteristic;
 
-  // For platform plugin to be considered as dynamic platform plugin,
-  // registerPlatform(pluginName, platformName, constructor, dynamic), dynamic must be true
+  // we'll use brightness to control the volume
+  // needs to be explicitly added, otherwise calling getCharacteristic() with a string won't work
+  Switch.addCharacteristic(Characteristic.Brightness);
+
   constructor = partial(SpotifyAccessory, Switch);
   homebridge.registerAccessory("homebridge-rusty-spotify", "SpotifyAccessory", constructor, true);
 }
