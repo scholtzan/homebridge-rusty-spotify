@@ -1,3 +1,4 @@
+///! Helper methods for using node-fetch.
 use js_sys::{Array, Function, Promise};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -17,12 +18,14 @@ extern "C" {
     fn text(this: &Response) -> Promise;
 }
 
+/// Supported request methods.
 pub enum FetchMethod {
     Post,
     Put,
 }
 
 impl FetchMethod {
+    /// Return the string representation of the fetch method.
     pub fn as_str(&self) -> &'static str {
         match self {
             &FetchMethod::Post => "POST",
@@ -32,12 +35,17 @@ impl FetchMethod {
 }
 
 #[derive(Serialize)]
+/// Options to configure a HTTP request.
 struct RequestOptions {
+    /// Request method: GET, PUT, POST, DELETE
     method: String,
+    /// Body sent in request
     body: String,
+    /// Request headers
     headers: HashMap<String, String>,
 }
 
+/// Perform a HTTP request with the provided options.
 pub async fn fetch(
     url: &str,
     method: FetchMethod,
@@ -45,6 +53,7 @@ pub async fn fetch(
     headers: HashMap<String, String>,
     empty_response: bool,
 ) -> Result<JsValue, JsValue> {
+    // node-fetch needs to be installed
     let fetch = require("node-fetch");
     let options = RequestOptions {
         method: method.as_str().to_owned(),

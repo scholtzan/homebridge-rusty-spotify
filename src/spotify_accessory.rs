@@ -1,3 +1,5 @@
+//! Defines the Homebridge Spotify Accessory.
+
 use crate::spotify_api::SpotifyApi;
 use js_sys::Array;
 use js_sys::Function;
@@ -7,10 +9,10 @@ use wasm_bindgen::JsCast;
 
 #[wasm_bindgen]
 extern "C" {
-    pub type Switch;
+    pub type Service;
 
     #[wasm_bindgen(method, js_name = getCharacteristic)]
-    fn get_characteristic(this: &Switch, name: &str) -> Characteristic;
+    fn get_characteristic(this: &Service, name: &str) -> Characteristic;
 
     pub type Characteristic;
 
@@ -19,26 +21,37 @@ extern "C" {
 }
 
 #[derive(Serialize, Deserialize)]
+/// Represents the accessory configuration retrieved from ~/.homebridge/config.json
 struct Config {
+    /// Spotify API client_id
     pub client_id: String,
+    /// Spotify API client_secret
     pub client_secret: String,
+    /// Cached refresh token for Spotify API
     pub refresh_token: String,
+    /// Device that should be controlled; if None then control currently active device
     pub device_id: Option<String>,
 }
 
 #[wasm_bindgen]
+/// Represents the Spotify accessory state.
 pub struct SpotifyAccessory {
+    /// Accessory configuration
     config: Config,
+    /// Indicates whether Spotify is playing or paused
     on: Rc<bool>,
-    service_switch: Switch,
+    /// Reference to the Service object
+    service: Service,
+    /// API to control Spotify
     api: Rc<SpotifyApi>,
+    /// Current volume
     volume: Rc<u32>,
 }
 
 #[wasm_bindgen]
 impl SpotifyAccessory {
     #[wasm_bindgen(constructor)]
-    pub fn new(service_switch: Switch, _log: Function, config: &JsValue) -> SpotifyAccessory {
+    pub fn new(service: Service, _log: Function, config: &JsValue) -> SpotifyAccessory {
         let config: Config = config.into_serde().unwrap();
 
         let api = SpotifyApi::new(
@@ -50,12 +63,13 @@ impl SpotifyAccessory {
         SpotifyAccessory {
             config,
             on: Rc::new(false),
-            service_switch,
+            service,
             api: Rc::new(api),
             volume: Rc::new(100),
         }
     }
 
+    /// Return closure returning whether Spotify is currently playing or is paused.
     fn get_on(&self) -> Closure<dyn FnMut(Function)> {
         let on = Rc::clone(&self.on);
 
@@ -71,6 +85,7 @@ impl SpotifyAccessory {
         }) as Box<dyn FnMut(Function)>)
     }
 
+    /// Closure for starting/pausing Spotify.
     fn set_on(&self) -> Closure<dyn FnMut(bool, Function)> {
         let mut on = Rc::clone(&self.on);
         let api = Rc::clone(&self.api);
@@ -94,6 +109,7 @@ impl SpotifyAccessory {
         }) as Box<dyn FnMut(bool, Function)>)
     }
 
+    /// Returns closure indicating the current volume.
     fn get_volume(&self) -> Closure<dyn FnMut(Function)> {
         let volume = Rc::clone(&self.volume);
 
@@ -109,6 +125,7 @@ impl SpotifyAccessory {
         }) as Box<dyn FnMut(Function)>)
     }
 
+    /// Closure for setting the volume.
     fn set_volume(&self) -> Closure<dyn FnMut(u32, Function)> {
         let api = Rc::clone(&self.api);
         let mut volume = Rc::clone(&self.volume);
@@ -127,11 +144,12 @@ impl SpotifyAccessory {
     }
 
     #[wasm_bindgen(js_name = getServices)]
+    /// Initializes all service actions.
     pub fn get_services(&self) -> Array {
         let get_on = self.get_on();
         let set_on = self.set_on();
 
-        self.service_switch
+        self.service
             .get_characteristic("On")
             .on("set", set_on.as_ref().unchecked_ref())
             .on("get", get_on.as_ref().unchecked_ref());
@@ -139,7 +157,7 @@ impl SpotifyAccessory {
         let get_volume = self.get_volume();
         let set_volume = self.set_volume();
 
-        self.service_switch
+        self.service
             .get_characteristic("Brightness")
             .on("set", set_volume.as_ref().unchecked_ref())
             .on("get", get_volume.as_ref().unchecked_ref());
@@ -149,6 +167,6 @@ impl SpotifyAccessory {
         set_volume.forget();
         get_volume.forget();
 
-        [self.service_switch.clone()].iter().collect()
+        [self.service.clone()].iter().collect()
     }
 }

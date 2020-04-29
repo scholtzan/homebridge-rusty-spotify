@@ -1,3 +1,5 @@
+//! Represent the Spotify API.
+
 use crate::node_fetch::{fetch, FetchMethod};
 use base64::encode;
 use js_sys::{Date, Promise};
@@ -8,7 +10,9 @@ use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::console;
 
+/// The Spotify API access token needs to be refreshed after 50 minutes.
 const ACCESS_TOKEN_LIFETIME: f64 = 3000.0;
+/// Path to the Homebridge config file.
 const HOMEBRIDGE_CONFIG: &str = "~/.homebridge/config.json";
 
 #[wasm_bindgen]
@@ -25,6 +29,7 @@ extern "C" {
 }
 
 #[derive(Serialize, Deserialize)]
+/// Represents the response when making an authorization request.
 struct SpotifyAuthorizationResponse {
     pub access_token: String,
     pub token_type: String,
@@ -33,6 +38,7 @@ struct SpotifyAuthorizationResponse {
 }
 
 #[wasm_bindgen]
+/// Represents the Spotify API and state.
 pub struct SpotifyApi {
     client_id: String,
     client_secret: String,
@@ -54,6 +60,7 @@ impl SpotifyApi {
         }
     }
 
+    /// Make a request to start playing music.
     pub fn play(&self, device_id: Option<String>) -> Promise {
         let authorize_request = self.authorize();
 
@@ -83,6 +90,7 @@ impl SpotifyApi {
         })
     }
 
+    /// Make a request to pause Spotify.
     pub fn pause(&self) -> Promise {
         let authorize_request = self.authorize();
 
@@ -107,6 +115,7 @@ impl SpotifyApi {
         })
     }
 
+    /// Make a request to update the volume on the active device.
     pub fn volume(&self, volume: u32) -> Promise {
         let authorize_request = self.authorize();
 
@@ -134,6 +143,7 @@ impl SpotifyApi {
         })
     }
 
+    /// Make an authorization request.
     pub fn authorize(&self) -> Promise {
         console::log_1(&"Authorize to Spotify".into());
 

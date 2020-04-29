@@ -9,7 +9,7 @@ module.exports = function(homebridge) {
 
   Accessory = homebridge.platformAccessory;
   Service = homebridge.hap.Service;
-  let Switch = new Service.Lightbulb("SpotifyAccessory");
+  let Switch = new Service.Lightbulb("Spotify");
   Characteristic = homebridge.hap.Characteristic;
 
   // we'll use brightness to control the volume
