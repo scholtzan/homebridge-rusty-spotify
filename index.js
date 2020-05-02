@@ -17,5 +17,5 @@ module.exports = function(homebridge) {
   Switch.addCharacteristic(Characteristic.Brightness);
 
   constructor = partial(SpotifyAccessory, Switch);
-  homebridge.registerAccessory("homebridge-rusty-spotify", "SpotifyAccessory", constructor, true);
+  homebridge.registerAccessory("homebridge-rusty-spotify", "Spotify", constructor, true);
 }
