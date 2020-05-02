@@ -32,7 +32,12 @@ parser.add_argument(
     "--username",
     help="Spotify username"
 )
-
+parser.add_argument(
+    "--device_id",
+    "--device-id",
+    nargs="?",
+    help="Device ID"
+)
 
 def main():
     args = parser.parse_args()
@@ -61,6 +66,9 @@ def main():
         "client_secret": args.client_secret,
         "refresh_token": token_info["refresh_token"]
     }
+
+    if args.device_id:
+        config["device_id"] = args.device_id
 
     print(json.dumps(config, indent=2))
 
