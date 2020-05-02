@@ -82,4 +82,10 @@ accessory will pause the music. The accessory also allows to change the playback
 
 ## Development
 
-
+1. Install the Rust toolchain, `wasm-pack`, `cargo-generate` and `npm` by [following this guide](https://rustwasm.github.io/book/game-of-life/setup.html)
+1. Clone the repository
+1. Run `make`
+    * This will create a `pkg/` directory containing all the generated nodejs files
+1. Copy the generated files to a device/directory that can be discovered by Homebridge
+1. Switch to the directory and run `npm install` to install all required dependencies
+1. Run Homebridge in debug mode and specify the directory with the plugin files: `DEBUG=* homebridge -D  -P /path/to/plugin/homebridge-rusty-spotify`
