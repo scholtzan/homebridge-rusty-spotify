@@ -66,26 +66,34 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Start playback".into());
-            let access_token: String = JsFuture::from(authorize_request)
-                .await
-                .unwrap()
-                .as_string()
-                .unwrap();
 
-            let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
 
-            if let Some(device_id) = device_id {
-                url.push_str(&format!("?device_id={}", device_id));
+                    let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
+
+                    if let Some(device_id) = device_id {
+                        url.push_str(&format!("?device_id={}", device_id));
+                    }
+
+                    let authorization_header = format!("Bearer {}", access_token);
+
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
+
+                    match fetch(&url, FetchMethod::Put, "", headers, true).await {
+                        Err(e) => {
+                            console::log_1(&format!("Error starting playback: {:?}", e).into())
+                        }
+                        Ok(_) => {} // player successfully started
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
             }
 
-            let authorization_header = format!("Bearer {}", access_token);
-
-            let mut headers = HashMap::new();
-            headers.insert("Authorization".to_owned(), authorization_header);
-
-            let _ = fetch(&url, FetchMethod::Put, "", headers, true)
-                .await
-                .unwrap();
             Ok(JsValue::NULL)
         })
     }
@@ -96,21 +104,28 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Stop playback".into());
-            let access_token: String = JsFuture::from(authorize_request)
-                .await
-                .unwrap()
-                .as_string()
-                .unwrap();
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
 
-            let url = "https://api.spotify.com/v1/me/player/pause";
-            let authorization_header = format!("Bearer {}", access_token);
+                    let url = "https://api.spotify.com/v1/me/player/pause";
+                    let authorization_header = format!("Bearer {}", access_token);
 
-            let mut headers = HashMap::new();
-            headers.insert("Authorization".to_owned(), authorization_header);
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
 
-            let _ = fetch(url, FetchMethod::Put, "", headers, true)
-                .await
-                .unwrap();
+                    match fetch(url, FetchMethod::Put, "", headers, true).await {
+                        Err(e) => {
+                            console::log_1(&format!("Error stopping playback: {:?}", e).into())
+                        }
+                        Ok(_) => {} // player successfully stopped playing
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
+            }
+
             Ok(JsValue::NULL)
         })
     }
@@ -121,24 +136,29 @@ impl SpotifyApi {
 
         future_to_promise(async move {
             console::log_1(&"Set volume".into());
-            let access_token: String = JsFuture::from(authorize_request)
-                .await
-                .unwrap()
-                .as_string()
-                .unwrap();
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
 
-            let url = format!(
-                "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
-                volume
-            );
-            let authorization_header = format!("Bearer {}", access_token);
+                    let url = format!(
+                        "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
+                        volume
+                    );
+                    let authorization_header = format!("Bearer {}", access_token);
 
-            let mut headers = HashMap::new();
-            headers.insert("Authorization".to_owned(), authorization_header);
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
 
-            let _ = fetch(&url, FetchMethod::Put, "", headers, true)
-                .await
-                .unwrap();
+                    match fetch(&url, FetchMethod::Put, "", headers, true).await {
+                        Err(e) => console::log_1(&format!("Error changing volume: {:?}", e).into()),
+                        Ok(_) => {} // volume successfully updated
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
+            }
+
             Ok(JsValue::NULL)
         })
     }
@@ -170,26 +190,27 @@ impl SpotifyApi {
                 return Ok(JsValue::from((*access_token).clone()));
             }
 
-            let result = fetch(url, FetchMethod::Post, &body, headers, false)
-                .await
-                .unwrap();
+            if let Ok(result) = fetch(url, FetchMethod::Post, &body, headers, false).await {
+                let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
 
-            let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
-            access_token_timestamp = Rc::new(Date::now());
-            access_token = Rc::new(json.access_token.clone());
+                access_token_timestamp = Rc::new(Date::now());
+                access_token = Rc::new(json.access_token.clone());
 
-            if let Some(new_refresh_token) = json.refresh_token {
-                // cache refresh token
-                let fs = require("fs");
+                if let Some(new_refresh_token) = json.refresh_token {
+                    // cache refresh token
+                    let fs = require("fs");
 
-                let config_string = fs.read_file(HOMEBRIDGE_CONFIG);
-                let new_config_string =
-                    config_string.replace(&(*refresh_token), &new_refresh_token.clone());
-                fs.write_file(HOMEBRIDGE_CONFIG, new_config_string);
-                refresh_token = Rc::new(new_refresh_token);
+                    let config_string = fs.read_file(HOMEBRIDGE_CONFIG);
+                    let new_config_string =
+                        config_string.replace(&(*refresh_token), &new_refresh_token.clone());
+                    fs.write_file(HOMEBRIDGE_CONFIG, new_config_string);
+                    refresh_token = Rc::new(new_refresh_token);
+                }
+
+                Ok(JsValue::from(json.access_token))
+            } else {
+                Err(JsValue::from("Error executing fetch request"))
             }
-
-            Ok(JsValue::from(json.access_token))
         })
     }
 }

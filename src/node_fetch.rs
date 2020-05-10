@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::console;
 
 #[wasm_bindgen]
 extern "C" {
@@ -78,6 +79,12 @@ pub async fn fetch(
                 Ok(json)
             }
         }
-        _ => Err(JsValue::from("Error executing fetch request")),
+        Err(e) => {
+            console::log_1(&format!("Error executing fetch request {:?}", e).into());
+            Err(JsValue::from(format!(
+                "Error executing fetch request {:?}",
+                e
+            )))
+        }
     }
 }
