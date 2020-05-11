@@ -290,23 +290,33 @@ impl SpotifyApi {
             }
 
             if let Ok(result) = fetch(url, FetchMethod::Post, &body, headers, false).await {
-                let json: SpotifyAuthorizationResponse = result.into_serde().unwrap();
+                let json: Result<SpotifyAuthorizationResponse, _> = result.into_serde();
 
-                access_token_timestamp = Rc::new(Date::now());
-                access_token = Rc::new(json.access_token.clone());
+                match json {
+                    Ok(json) => {
+                        access_token_timestamp = Rc::new(Date::now());
+                        access_token = Rc::new(json.access_token.clone());
 
-                if let Some(new_refresh_token) = json.refresh_token {
-                    // cache refresh token
-                    let fs = require("fs");
+                        if let Some(new_refresh_token) = json.refresh_token {
+                            // cache refresh token
+                            let fs = require("fs");
 
-                    let config_string = fs.read_file(HOMEBRIDGE_CONFIG);
-                    let new_config_string =
-                        config_string.replace(&(*refresh_token), &new_refresh_token.clone());
-                    fs.write_file(HOMEBRIDGE_CONFIG, new_config_string);
-                    refresh_token = Rc::new(new_refresh_token);
+                            let config_string = fs.read_file(HOMEBRIDGE_CONFIG);
+                            let new_config_string = config_string
+                                .replace(&(*refresh_token), &new_refresh_token.clone());
+                            fs.write_file(HOMEBRIDGE_CONFIG, new_config_string);
+                            refresh_token = Rc::new(new_refresh_token);
+                        }
+
+                        return Ok(JsValue::from(json.access_token));
+                    }
+                    Err(_) => {
+                        console::log_1(
+                            &format!("Error while retrieving access token from Spotify API. Response was: {:?}", result).into(),
+                        );
+                        return Err(JsValue::from(format!("Error while retrieving access token from Spotify API. Response was: {:?}", result)));
+                    }
                 }
-
-                Ok(JsValue::from(json.access_token))
             } else {
                 Err(JsValue::from("Error executing fetch request"))
             }
