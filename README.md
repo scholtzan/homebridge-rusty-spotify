@@ -14,7 +14,7 @@ The plugin requires a Spotify Premium account.
     1. Copy the "Client ID" and "Client Secret" which will be required in the following configuration step
     1. Click "Edit Settings"
     1. Add `http://localhost/callback` as "Redirect URI" and save
-1. Configure the plugin using the generated client ID and client secret
+1. Configure the plugin using the generated client ID and client secret (see Configuration)
 
 ### Configuration
 
