@@ -42,6 +42,7 @@ struct SpotifyAuthorizationResponse {
 struct SpotifyDevice {
     pub id: String,
     pub is_active: bool,
+    pub volume_percent: u32,
     // ... more attributes ...
 }
 
@@ -187,8 +188,49 @@ impl SpotifyApi {
         })
     }
 
+    /// Check if Spotify is currently playing; optionally check for a specific device
+    pub fn get_volume(&self, device_id: Option<String>) -> Promise {
+        let authorize_request = self.authorize();
+
+        future_to_promise(async move {
+            console::log_1(&"Check playback state".into());
+
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
+
+                    let url = "https://api.spotify.com/v1/me/player";
+                    let authorization_header = format!("Bearer {}", access_token);
+
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
+
+                    match fetch(url, FetchMethod::Get, "", headers, false).await {
+                        Err(e) => {
+                            console::log_1(&format!("Error getting volume state: {:?}", e).into())
+                        }
+                        Ok(result) => {
+                            let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
+
+                            if device_id.is_some() && device_id.unwrap() == json.device.id {
+                                return Ok(JsValue::from(json.device.volume_percent));
+                            } else {
+                                return Ok(JsValue::from(json.device.volume_percent));
+                            }
+                        }
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
+            }
+
+            Ok(JsValue::from(100))
+        })
+    }
+
     /// Make a request to update the volume on the active device.
-    pub fn volume(&self, volume: u32) -> Promise {
+    pub fn set_volume(&self, volume: u32) -> Promise {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {

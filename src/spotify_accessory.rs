@@ -44,8 +44,6 @@ pub struct SpotifyAccessory {
     service: Service,
     /// API to control Spotify
     api: Rc<SpotifyApi>,
-    /// Current volume
-    volume: Rc<u32>,
 }
 
 #[wasm_bindgen]
@@ -64,7 +62,6 @@ impl SpotifyAccessory {
             config,
             service,
             api: Rc::new(api),
-            volume: Rc::new(100),
         }
     }
 
@@ -116,33 +113,40 @@ impl SpotifyAccessory {
 
     /// Returns closure indicating the current volume.
     fn get_volume(&self) -> Closure<dyn FnMut(Function)> {
-        let volume = Rc::clone(&self.volume);
+        let api = Rc::clone(&self.api);
+        let device_id = self.config.device_id.clone();
 
         Closure::wrap(Box::new(move |callback: Function| {
-            let volume = *volume;
+            let api = api.clone();
+            let device_id = device_id.clone();
 
-            callback
-                .apply(
-                    &JsValue::null(),
-                    &Array::of2(&JsValue::null(), &JsValue::from(volume)),
-                )
-                .unwrap();
+            spawn_local(async move {
+                let volume: u32 = match JsFuture::from(api.get_volume(device_id)).await {
+                    Ok(state) => (state.as_f64().unwrap() as u32),
+                    Err(_) => 100,
+                };
+
+                callback
+                    .apply(
+                        &JsValue::null(),
+                        &Array::of2(&JsValue::null(), &JsValue::from(volume)),
+                    )
+                    .unwrap();
+            });
         }) as Box<dyn FnMut(Function)>)
     }
 
     /// Closure for setting the volume.
     fn set_volume(&self) -> Closure<dyn FnMut(u32, Function)> {
         let api = Rc::clone(&self.api);
-        let mut volume = Rc::clone(&self.volume);
 
         Closure::wrap(Box::new(move |new_volume: u32, callback: Function| {
-            volume = Rc::new(new_volume);
-            let _ = api.volume(*volume);
+            let _ = api.set_volume(new_volume);
 
             callback
                 .apply(
                     &JsValue::null(),
-                    &Array::of2(&JsValue::null(), &JsValue::from(*volume)),
+                    &Array::of2(&JsValue::null(), &JsValue::from(new_volume)),
                 )
                 .unwrap();
         }) as Box<dyn FnMut(u32, Function)>)
