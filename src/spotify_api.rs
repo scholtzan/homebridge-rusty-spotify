@@ -37,6 +37,22 @@ struct SpotifyAuthorizationResponse {
     pub refresh_token: Option<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+/// Represents information of a device returned by the Spotify Web API.
+struct SpotifyDevice {
+    pub id: String,
+    pub is_active: bool,
+    // ... more attributes ...
+}
+
+#[derive(Serialize, Deserialize)]
+/// Represents the response when requesting the playback state.
+struct SpotifyPlaybackResponse {
+    pub device: SpotifyDevice,
+    pub is_playing: bool,
+    // ... more attributes ...
+}
+
 #[wasm_bindgen]
 /// Represents the Spotify API and state.
 pub struct SpotifyApi {
@@ -127,6 +143,47 @@ impl SpotifyApi {
             }
 
             Ok(JsValue::NULL)
+        })
+    }
+
+    /// Check if Spotify is currently playing; optionally check for a specific device
+    pub fn is_playing(&self, device_id: Option<String>) -> Promise {
+        let authorize_request = self.authorize();
+
+        future_to_promise(async move {
+            console::log_1(&"Check playback state".into());
+
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
+
+                    let url = "https://api.spotify.com/v1/me/player";
+                    let authorization_header = format!("Bearer {}", access_token);
+
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
+
+                    match fetch(url, FetchMethod::Get, "", headers, false).await {
+                        Err(e) => {
+                            console::log_1(&format!("Error getting playback state: {:?}", e).into())
+                        }
+                        Ok(result) => {
+                            let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
+
+                            if device_id.is_some() && device_id.unwrap() == json.device.id {
+                                return Ok(JsValue::from(json.is_playing));
+                            } else {
+                                return Ok(JsValue::from(json.is_playing));
+                            }
+                        }
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
+            }
+
+            Ok(JsValue::FALSE)
         })
     }
 

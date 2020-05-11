@@ -21,6 +21,7 @@ extern "C" {
 
 /// Supported request methods.
 pub enum FetchMethod {
+    Get,
     Post,
     Put,
 }
@@ -29,6 +30,7 @@ impl FetchMethod {
     /// Return the string representation of the fetch method.
     pub fn as_str(&self) -> &'static str {
         match self {
+            &FetchMethod::Get => "GET",
             &FetchMethod::Post => "POST",
             &FetchMethod::Put => "PUT",
         }
@@ -41,7 +43,7 @@ struct RequestOptions {
     /// Request method: GET, PUT, POST, DELETE
     method: String,
     /// Body sent in request
-    body: String,
+    body: Option<String>,
     /// Request headers
     headers: HashMap<String, String>,
 }
@@ -56,9 +58,15 @@ pub async fn fetch(
 ) -> Result<JsValue, JsValue> {
     // node-fetch needs to be installed
     let fetch = require("node-fetch");
+
+    let body = match method {
+        FetchMethod::Get => None, // Request with GET/HEAD method cannot have body
+        _ => Some(body.to_owned()),
+    };
+
     let options = RequestOptions {
         method: method.as_str().to_owned(),
-        body: body.to_owned(),
+        body: body,
         headers,
     };
 

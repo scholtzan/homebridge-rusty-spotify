@@ -6,6 +6,8 @@ use js_sys::Function;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
+use wasm_bindgen_futures::JsFuture;
 
 #[wasm_bindgen]
 extern "C" {
@@ -38,8 +40,6 @@ struct Config {
 pub struct SpotifyAccessory {
     /// Accessory configuration
     config: Config,
-    /// Indicates whether Spotify is playing or paused
-    on: Rc<bool>,
     /// Reference to the Service object
     service: Service,
     /// API to control Spotify
@@ -62,7 +62,6 @@ impl SpotifyAccessory {
 
         SpotifyAccessory {
             config,
-            on: Rc::new(false),
             service,
             api: Rc::new(api),
             volume: Rc::new(100),
@@ -71,29 +70,35 @@ impl SpotifyAccessory {
 
     /// Return closure returning whether Spotify is currently playing or is paused.
     fn get_on(&self) -> Closure<dyn FnMut(Function)> {
-        let on = Rc::clone(&self.on);
+        let api = Rc::clone(&self.api);
+        let device_id = self.config.device_id.clone();
 
         Closure::wrap(Box::new(move |callback: Function| {
-            let on = *on;
+            let api = api.clone();
+            let device_id = device_id.clone();
 
-            callback
-                .apply(
-                    &JsValue::null(),
-                    &Array::of2(&JsValue::null(), &JsValue::from(on)),
-                )
-                .unwrap();
+            spawn_local(async move {
+                let on = match JsFuture::from(api.is_playing(device_id)).await {
+                    Ok(state) => state.as_bool().unwrap(),
+                    Err(_) => false,
+                };
+
+                callback
+                    .apply(
+                        &JsValue::null(),
+                        &Array::of2(&JsValue::null(), &JsValue::from(on)),
+                    )
+                    .unwrap();
+            });
         }) as Box<dyn FnMut(Function)>)
     }
 
     /// Closure for starting/pausing Spotify.
     fn set_on(&self) -> Closure<dyn FnMut(bool, Function)> {
-        let mut on = Rc::clone(&self.on);
         let api = Rc::clone(&self.api);
         let device_id = self.config.device_id.clone();
 
         Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
-            on = Rc::new(new_on);
-
             if new_on {
                 let _ = api.play(device_id.clone());
             } else {
@@ -103,7 +108,7 @@ impl SpotifyAccessory {
             callback
                 .apply(
                     &JsValue::null(),
-                    &Array::of2(&JsValue::null(), &JsValue::from(*on)),
+                    &Array::of2(&JsValue::null(), &JsValue::from(new_on)),
                 )
                 .unwrap();
         }) as Box<dyn FnMut(bool, Function)>)
