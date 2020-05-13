@@ -8,9 +8,6 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::console;
-
-const DEVICE_PING_INTERVAL: u32 = 15 * 60 * 1000; // milli-seconds
 
 #[wasm_bindgen]
 extern "C" {
@@ -23,9 +20,6 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     fn on(this: &Characteristic, event: &str, listener: &Function) -> Characteristic;
-
-    #[wasm_bindgen(js_name = setInterval)]
-    pub fn set_interval(closure: &Function, millis: u32) -> f64;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -158,32 +152,6 @@ impl SpotifyAccessory {
         }) as Box<dyn FnMut(u32, Function)>)
     }
 
-    /// Updates the device state in a specified interval to prevent device inactivity.
-    fn start_ping(&self) {
-        // todo: figure out if this actually works
-        let api = Rc::clone(&self.api);
-        let device_id = self.config.device_id.clone();
-
-        let ping_closure = Closure::wrap(Box::new(move || {
-            let api = api.clone();
-            let device_id = device_id.clone();
-            console::log_1(&"Ping device".into());
-
-            spawn_local(async move {
-                let volume: u32 = match JsFuture::from(api.get_volume(device_id)).await {
-                    Ok(state) => (state.as_f64().unwrap() as u32),
-                    Err(_) => 100,
-                };
-
-                let _ = api.set_volume(volume);
-            });
-        }) as Box<dyn FnMut()>);
-        //
-        let _ = set_interval(ping_closure.as_ref().unchecked_ref(), DEVICE_PING_INTERVAL);
-
-        ping_closure.forget();
-    }
-
     #[wasm_bindgen(js_name = getServices)]
     /// Initializes all service actions.
     pub fn get_services(&self) -> Array {
@@ -207,8 +175,6 @@ impl SpotifyAccessory {
         set_on.forget();
         set_volume.forget();
         get_volume.forget();
-
-        self.start_ping();
 
         [self.service.clone()].iter().collect()
     }
