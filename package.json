@@ -3,7 +3,7 @@
   "collaborators": [
     "anna <anna@scholtzan.net>"
   ],
-  "version": "0.2.0",
+  "version": "0.3.0",
   "files": [
     "homebridge_rusty_spotify_bg.wasm",
     "homebridge_rusty_spotify.js",
