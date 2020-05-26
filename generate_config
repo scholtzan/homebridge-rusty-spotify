@@ -60,8 +60,8 @@ def main():
         token_info = auth.get_access_token(code, as_dict=True)
     
     config = {
-        "accessory": "SpotifyAccessory",
-        "name": "SpotifyAccessory",
+        "accessory": "Spotify",
+        "name": "Spotify",
         "client_id": args.client_id,
         "client_secret": args.client_secret,
         "refresh_token": token_info["refresh_token"]
