@@ -6,13 +6,15 @@ use js_sys::Function;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::console;
+
+use crate::spotify_platform::Service;
 
 #[wasm_bindgen]
 extern "C" {
-    pub type Service;
-
     #[wasm_bindgen(method, js_name = getCharacteristic)]
     fn get_characteristic(this: &Service, name: &str) -> Characteristic;
 
@@ -20,55 +22,52 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     fn on(this: &Characteristic, event: &str, listener: &Function) -> Characteristic;
-}
 
-#[derive(Serialize, Deserialize)]
-/// Represents the accessory configuration retrieved from ~/.homebridge/config.json
-struct Config {
-    /// Spotify API client_id
-    pub client_id: String,
-    /// Spotify API client_secret
-    pub client_secret: String,
-    /// Cached refresh token for Spotify API
-    pub refresh_token: String,
-    /// Device that should be controlled; if None then control currently active device
-    pub device_id: Option<String>,
+    pub type Accessory;
+
+    #[wasm_bindgen(constructor, js_class = "Accessory")]
+    fn new(name: String, uuid: String) -> Accessory;
+
+    pub type UUIDGen;
+
+    #[wasm_bindgen(static_method_of = UUIDGen)]
+    fn generate(uuid_base: String) -> String;
 }
 
 #[wasm_bindgen]
 /// Represents the Spotify accessory state.
 pub struct SpotifyAccessory {
-    /// Accessory configuration
-    config: Config,
     /// Reference to the Service object
     service: Service,
     /// API to control Spotify
     api: Rc<SpotifyApi>,
+    /// ID of device to be controlled
+    device_id: String,
+    /// Accessory display name
+    name: String,
+    /// Accessory to be registered to Homebridge
+    accessory: Accessory
 }
 
-#[wasm_bindgen]
 impl SpotifyAccessory {
-    #[wasm_bindgen(constructor)]
-    pub fn new(service: Service, _log: Function, config: &JsValue) -> SpotifyAccessory {
-        let config: Config = config.into_serde().unwrap();
-
-        let api = SpotifyApi::new(
-            config.client_id.clone(),
-            config.client_secret.clone(),
-            config.refresh_token.clone(),
-        );
-
+    pub fn new(service: Service, name: String, device_id: String, api: Rc<SpotifyApi>) -> SpotifyAccessory {
         SpotifyAccessory {
-            config,
             service,
-            api: Rc::new(api),
+            api,
+            device_id,
+            name,
+            accessory: Accessory::new("test".to_string(), UUIDGen::generate("test".to_string()))
         }
+    }
+
+    pub fn get_accessory(&self) -> &Accessory {
+        &self.accessory
     }
 
     /// Return closure returning whether Spotify is currently playing or is paused.
     fn get_on(&self) -> Closure<dyn FnMut(Function)> {
         let api = Rc::clone(&self.api);
-        let device_id = self.config.device_id.clone();
+        let device_id = self.device_id.clone();
 
         Closure::wrap(Box::new(move |callback: Function| {
             let api = api.clone();
@@ -93,7 +92,7 @@ impl SpotifyAccessory {
     /// Closure for starting/pausing Spotify.
     fn set_on(&self) -> Closure<dyn FnMut(bool, Function)> {
         let api = Rc::clone(&self.api);
-        let device_id = self.config.device_id.clone();
+        let device_id = self.device_id.clone();
 
         Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
             if new_on {
@@ -114,7 +113,7 @@ impl SpotifyAccessory {
     /// Returns closure indicating the current volume.
     fn get_volume(&self) -> Closure<dyn FnMut(Function)> {
         let api = Rc::clone(&self.api);
-        let device_id = self.config.device_id.clone();
+        let device_id = self.device_id.clone();
 
         Closure::wrap(Box::new(move |callback: Function| {
             let api = api.clone();
@@ -139,6 +138,7 @@ impl SpotifyAccessory {
     /// Closure for setting the volume.
     fn set_volume(&self) -> Closure<dyn FnMut(u32, Function)> {
         let api = Rc::clone(&self.api);
+        // todo: device
 
         Closure::wrap(Box::new(move |new_volume: u32, callback: Function| {
             let _ = api.set_volume(new_volume);
@@ -151,7 +151,10 @@ impl SpotifyAccessory {
                 .unwrap();
         }) as Box<dyn FnMut(u32, Function)>)
     }
+}
 
+#[wasm_bindgen]
+impl SpotifyAccessory {
     #[wasm_bindgen(js_name = getServices)]
     /// Initializes all service actions.
     pub fn get_services(&self) -> Array {
@@ -177,5 +180,10 @@ impl SpotifyAccessory {
         get_volume.forget();
 
         [self.service.clone()].iter().collect()
+    }
+
+    #[wasm_bindgen(js_name = identify)]
+    pub fn identify(&self) {
+        console::log_1(&"Identify Spotify".into());
     }
 }

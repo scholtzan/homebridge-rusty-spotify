@@ -5,5 +5,6 @@ extern crate js_sys;
 extern crate web_sys;
 
 mod node_fetch;
+mod spotify_platform;
 mod spotify_accessory;
 mod spotify_api;

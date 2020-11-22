@@ -55,6 +55,7 @@ struct SpotifyPlaybackResponse {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 /// Represents the Spotify API and state.
 pub struct SpotifyApi {
     client_id: String,
@@ -78,7 +79,7 @@ impl SpotifyApi {
     }
 
     /// Make a request to start playing music.
-    pub fn play(&self, device_id: Option<String>) -> Promise {
+    pub fn play(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
@@ -89,10 +90,7 @@ impl SpotifyApi {
                     let access_token: String = authorize_request.as_string().unwrap();
 
                     let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
-
-                    if let Some(device_id) = device_id {
-                        url.push_str(&format!("?device_id={}", device_id));
-                    }
+                    url.push_str(&format!("?device_id={}", device_id));
 
                     let authorization_header = format!("Bearer {}", access_token);
 
@@ -118,6 +116,8 @@ impl SpotifyApi {
     /// Make a request to pause Spotify.
     pub fn pause(&self) -> Promise {
         let authorize_request = self.authorize();
+
+        // todo: device
 
         future_to_promise(async move {
             console::log_1(&"Stop playback".into());
@@ -148,7 +148,7 @@ impl SpotifyApi {
     }
 
     /// Check if Spotify is currently playing; optionally check for a specific device
-    pub fn is_playing(&self, device_id: Option<String>) -> Promise {
+    pub fn is_playing(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
@@ -170,12 +170,7 @@ impl SpotifyApi {
                         }
                         Ok(result) => {
                             let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
-
-                            if device_id.is_some() && device_id.unwrap() == json.device.id {
-                                return Ok(JsValue::from(json.is_playing));
-                            } else {
-                                return Ok(JsValue::from(json.is_playing));
-                            }
+                            return Ok(JsValue::from(json.is_playing));
                         }
                     }
                 }
@@ -189,7 +184,7 @@ impl SpotifyApi {
     }
 
     /// Check if Spotify is currently playing; optionally check for a specific device
-    pub fn get_volume(&self, device_id: Option<String>) -> Promise {
+    pub fn get_volume(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
@@ -211,12 +206,7 @@ impl SpotifyApi {
                         }
                         Ok(result) => {
                             let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
-
-                            if device_id.is_some() && device_id.unwrap() == json.device.id {
-                                return Ok(JsValue::from(json.device.volume_percent));
-                            } else {
-                                return Ok(JsValue::from(json.device.volume_percent));
-                            }
+                            return Ok(JsValue::from(json.device.volume_percent));
                         }
                     }
                 }
@@ -232,6 +222,8 @@ impl SpotifyApi {
     /// Make a request to update the volume on the active device.
     pub fn set_volume(&self, volume: u32) -> Promise {
         let authorize_request = self.authorize();
+
+        // todo: device
 
         future_to_promise(async move {
             console::log_1(&"Set volume".into());
