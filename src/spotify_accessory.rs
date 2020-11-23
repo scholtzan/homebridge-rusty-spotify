@@ -23,15 +23,22 @@ extern "C" {
     #[wasm_bindgen(method)]
     fn on(this: &Characteristic, event: &str, listener: &Function) -> Characteristic;
 
+    #[derive(Debug, PartialEq)]
     pub type Accessory;
 
     #[wasm_bindgen(constructor, js_class = "Accessory")]
-    fn new(name: String, uuid: String) -> Accessory;
+    fn new(name: &str, uuid: &str) -> Accessory;
+
+    #[wasm_bindgen(method, js_name = addService)]
+    fn add_service(this: &Accessory, service: &Service);
+
+    #[wasm_bindgen(method, getter = UUID)]
+    pub fn get_uuid(this: &Accessory) -> String;
 
     pub type UUIDGen;
 
     #[wasm_bindgen(static_method_of = UUIDGen)]
-    fn generate(uuid_base: String) -> String;
+    fn generate(uuid_base: &str) -> String;
 }
 
 #[wasm_bindgen]
@@ -51,17 +58,52 @@ pub struct SpotifyAccessory {
 
 impl SpotifyAccessory {
     pub fn new(service: Service, name: String, device_id: String, api: Rc<SpotifyApi>) -> SpotifyAccessory {
-        SpotifyAccessory {
+        // accessory type that can get registered to Homebridge
+        let accessory = Accessory::new(&name, &UUIDGen::generate(&name));
+
+        let spotify_accessory = SpotifyAccessory {
             service,
             api,
             device_id,
             name,
-            accessory: Accessory::new("test".to_string(), UUIDGen::generate("test".to_string()))
-        }
+            accessory
+        };
+
+        spotify_accessory.apply_characteristics();
+        spotify_accessory.apply_service();
+
+        spotify_accessory
     }
 
     pub fn get_accessory(&self) -> &Accessory {
         &self.accessory
+    }
+
+    fn apply_characteristics(&self) {
+        let get_on = self.get_on();
+        let set_on = self.set_on();
+
+        self.service
+            .get_characteristic("On")
+            .on("set", set_on.as_ref().unchecked_ref())
+            .on("get", get_on.as_ref().unchecked_ref());
+
+        let get_volume = self.get_volume();
+        let set_volume = self.set_volume();
+
+        self.service
+            .get_characteristic("Brightness")
+            .on("set", set_volume.as_ref().unchecked_ref())
+            .on("get", get_volume.as_ref().unchecked_ref());
+
+        get_on.forget();
+        set_on.forget();
+        set_volume.forget();
+        get_volume.forget();
+    }
+
+    fn apply_service(&self) {
+        self.accessory.add_service(&self.service)
     }
 
     /// Return closure returning whether Spotify is currently playing or is paused.
@@ -150,40 +192,5 @@ impl SpotifyAccessory {
                 )
                 .unwrap();
         }) as Box<dyn FnMut(u32, Function)>)
-    }
-}
-
-#[wasm_bindgen]
-impl SpotifyAccessory {
-    #[wasm_bindgen(js_name = getServices)]
-    /// Initializes all service actions.
-    pub fn get_services(&self) -> Array {
-        let get_on = self.get_on();
-        let set_on = self.set_on();
-
-        self.service
-            .get_characteristic("On")
-            .on("set", set_on.as_ref().unchecked_ref())
-            .on("get", get_on.as_ref().unchecked_ref());
-
-        let get_volume = self.get_volume();
-        let set_volume = self.set_volume();
-
-        self.service
-            .get_characteristic("Brightness")
-            .on("set", set_volume.as_ref().unchecked_ref())
-            .on("get", get_volume.as_ref().unchecked_ref());
-
-        get_on.forget();
-        set_on.forget();
-        set_volume.forget();
-        get_volume.forget();
-
-        [self.service.clone()].iter().collect()
-    }
-
-    #[wasm_bindgen(js_name = identify)]
-    pub fn identify(&self) {
-        console::log_1(&"Identify Spotify".into());
     }
 }

@@ -2,7 +2,7 @@
 
 use crate::node_fetch::{fetch, FetchMethod};
 use base64::encode;
-use js_sys::{Date, Promise};
+use js_sys::{Date, Promise, Array};
 use std::collections::HashMap;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -17,15 +17,15 @@ const HOMEBRIDGE_CONFIG: &str = "~/.homebridge/config.json";
 
 #[wasm_bindgen]
 extern "C" {
-    type Fs;
+    pub type Fs;
 
-    fn require(name: &str) -> Fs;
+    pub fn require(name: &str) -> Fs;
 
     #[wasm_bindgen(method, js_name = readFileSync)]
-    fn read_file(this: &Fs, file: &str) -> String;
+    pub fn read_file(this: &Fs, file: &str) -> String;
 
     #[wasm_bindgen(method, js_name = writeFileSync)]
-    fn write_file(this: &Fs, file: &str, data: String) -> String;
+    pub fn write_file(this: &Fs, file: &str, data: String) -> String;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -37,12 +37,13 @@ struct SpotifyAuthorizationResponse {
     pub refresh_token: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 /// Represents information of a device returned by the Spotify Web API.
-struct SpotifyDevice {
+pub struct SpotifyDevice {
     pub id: String,
     pub is_active: bool,
     pub volume_percent: u32,
+    pub name: String,
     // ... more attributes ...
 }
 
@@ -52,6 +53,12 @@ struct SpotifyPlaybackResponse {
     pub device: SpotifyDevice,
     pub is_playing: bool,
     // ... more attributes ...
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Represents a list of available Spotify devices
+pub struct SpotifyDevicesResponse {
+    pub devices: Vec<SpotifyDevice>
 }
 
 #[wasm_bindgen]
@@ -254,6 +261,41 @@ impl SpotifyApi {
         })
     }
 
+    /// Check if Spotify is currently playing; optionally check for a specific device
+    pub fn get_devices(&self) -> Promise {
+        let authorize_request = self.authorize();
+
+        future_to_promise(async move {
+            console::log_1(&"Get available devices".into());
+
+            match JsFuture::from(authorize_request).await {
+                Ok(authorize_request) => {
+                    let access_token: String = authorize_request.as_string().unwrap();
+
+                    let url = "https://api.spotify.com/v1/me/player/devices";
+                    let authorization_header = format!("Bearer {}", access_token);
+
+                    let mut headers = HashMap::new();
+                    headers.insert("Authorization".to_owned(), authorization_header);
+
+                    match fetch(url, FetchMethod::Get, "", headers, false).await {
+                        Err(e) => {
+                            console::log_1(&format!("Error getting volume state: {:?}", e).into())
+                        }
+                        Ok(result) => {
+                            return Ok(result);
+                        }
+                    }
+                }
+                Err(e) => console::log_1(
+                    &format!("Error while authenticating to Spotify API: {:?}", e).into(),
+                ),
+            }
+
+            Ok(JsValue::null())
+        })
+    }
+
     /// Make an authorization request.
     pub fn authorize(&self) -> Promise {
         console::log_1(&"Authorize to Spotify".into());
@@ -284,7 +326,7 @@ impl SpotifyApi {
             if let Ok(result) = fetch(url, FetchMethod::Post, &body, headers, false).await {
                 let json: Result<SpotifyAuthorizationResponse, _> = result.into_serde();
 
-                match json {
+                return match json {
                     Ok(json) => {
                         access_token_timestamp = Rc::new(Date::now());
                         access_token = Rc::new(json.access_token.clone());
@@ -300,13 +342,13 @@ impl SpotifyApi {
                             refresh_token = Rc::new(new_refresh_token);
                         }
 
-                        return Ok(JsValue::from(json.access_token));
+                        Ok(JsValue::from(json.access_token))
                     }
                     Err(_) => {
                         console::log_1(
                             &format!("Error while retrieving access token from Spotify API. Response was: {:?}", result).into(),
                         );
-                        return Err(JsValue::from(format!("Error while retrieving access token from Spotify API. Response was: {:?}", result)));
+                        Err(JsValue::from(format!("Error while retrieving access token from Spotify API. Response was: {:?}", result)))
                     }
                 }
             } else {
