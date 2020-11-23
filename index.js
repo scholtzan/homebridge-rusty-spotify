@@ -10,13 +10,15 @@ module.exports = function(homebridge) {
   Accessory = homebridge.platformAccessory;
   Service = homebridge.hap.Service;
   UUIDGen = homebridge.hap.uuid;
-  let Switch = new Service.Lightbulb("Spotify");
   Characteristic = homebridge.hap.Characteristic;
 
-  // we'll use brightness to control the volume
-  // needs to be explicitly added, otherwise calling getCharacteristic() with a string won't work
-  Switch.addCharacteristic(Characteristic.Brightness);
+  createSwitch = function (name) {
+    let newSwitch = new Service.Lightbulb(name);
+    // we'll use brightness to control the volume
+    newSwitch.addCharacteristic(Characteristic.Brightness);
+    return newSwitch;
+  }
 
-  constructor = partial(SpotifyPlatform, homebridge, Switch);
+  constructor = partial(SpotifyPlatform, homebridge);
   homebridge.registerPlatform("homebridge-rusty-spotify", "Spotify", constructor, true);
 }

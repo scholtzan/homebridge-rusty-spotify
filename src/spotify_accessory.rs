@@ -23,6 +23,9 @@ extern "C" {
     #[wasm_bindgen(method)]
     fn on(this: &Characteristic, event: &str, listener: &Function) -> Characteristic;
 
+    #[wasm_bindgen(method, js_name = setValue)]
+    fn set_value(this: &Characteristic, value: &str);
+
     #[derive(Debug, PartialEq)]
     pub type Accessory;
 
@@ -32,6 +35,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = addService)]
     fn add_service(this: &Accessory, service: &Service);
 
+    #[wasm_bindgen(method, js_name = getService)]
+    fn get_service(this: &Accessory, name: &str) -> Service;
+
     #[wasm_bindgen(method, getter = UUID)]
     pub fn get_uuid(this: &Accessory) -> String;
 
@@ -39,9 +45,13 @@ extern "C" {
 
     #[wasm_bindgen(static_method_of = UUIDGen)]
     fn generate(uuid_base: &str) -> String;
+
+    #[wasm_bindgen(js_name = createSwitch)]
+    pub fn create_switch(name: &str) -> Service;
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 /// Represents the Spotify accessory state.
 pub struct SpotifyAccessory {
     /// Reference to the Service object
@@ -57,12 +67,12 @@ pub struct SpotifyAccessory {
 }
 
 impl SpotifyAccessory {
-    pub fn new(service: Service, name: String, device_id: String, api: Rc<SpotifyApi>) -> SpotifyAccessory {
+    pub fn new(name: String, device_id: String, api: Rc<SpotifyApi>) -> SpotifyAccessory {
         // accessory type that can get registered to Homebridge
         let accessory = Accessory::new(&name, &UUIDGen::generate(&name));
 
         let spotify_accessory = SpotifyAccessory {
-            service,
+            service: create_switch(&name),
             api,
             device_id,
             name,
@@ -73,6 +83,10 @@ impl SpotifyAccessory {
         spotify_accessory.apply_service();
 
         spotify_accessory
+    }
+
+    pub fn get_device_id(&self) -> &str {
+        &self.device_id
     }
 
     pub fn get_accessory(&self) -> &Accessory {
@@ -95,6 +109,8 @@ impl SpotifyAccessory {
             .get_characteristic("Brightness")
             .on("set", set_volume.as_ref().unchecked_ref())
             .on("get", get_volume.as_ref().unchecked_ref());
+
+        self.service.get_characteristic("Name").set_value(&self.name);
 
         get_on.forget();
         set_on.forget();

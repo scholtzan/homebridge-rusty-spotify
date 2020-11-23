@@ -23,7 +23,7 @@ const PLATFORM_NAME: &str = "Spotify";
 
 #[wasm_bindgen]
 extern "C" {
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub type Service;
 
     #[derive(Clone)]
@@ -68,8 +68,6 @@ pub struct SpotifyPlatform {
     homebridge: Homebridge,
     /// Platform configuration
     config: Config,
-    /// Reference to the Service object
-    service: Service,
     /// API to control Spotify
     api: Rc<SpotifyApi>,
     /// Available Spotify devices
@@ -84,7 +82,7 @@ pub struct SpotifyPlatform {
 #[wasm_bindgen]
 impl SpotifyPlatform {
     #[wasm_bindgen(constructor)]
-    pub fn new(homebridge: Homebridge, service: Service, _log: Function, config: &JsValue) -> SpotifyPlatform {
+    pub fn new(homebridge: Homebridge, _log: Function, config: &JsValue) -> SpotifyPlatform {
         let config: Config = config.into_serde().unwrap();
 
         let api = SpotifyApi::new(
@@ -96,7 +94,6 @@ impl SpotifyPlatform {
         let mut platform = SpotifyPlatform {
             homebridge,
             config,
-            service,
             api: Rc::new(api),
             devices: Rc::new(RefCell::new(Vec::new())),
             polling_interval: 1000,
@@ -111,14 +108,12 @@ impl SpotifyPlatform {
     /// remove devices that became inactive.
     fn refresh_devices(&mut self) {
         let homebridge = self.homebridge.clone();
-        let service = self.service.clone();
         let api = self.api.clone();
         let cached = self.cached.clone();
         let devices = self.devices.clone();
 
         let refresh_closure = Closure::wrap(Box::new(move || {
             let homebridge = homebridge.clone();
-            let service = service.clone();
             let api = api.clone();
             let cached = cached.clone();
             let devices = devices.clone();
@@ -130,34 +125,54 @@ impl SpotifyPlatform {
 
                 Self::remove_cached(&homebridge, cached);
 
-                let devices: SpotifyDevicesResponse = match JsFuture::from(api.get_devices()).await {
+                let available_devices: SpotifyDevicesResponse = match JsFuture::from(api.get_devices()).await {
                     Ok(state) => state.into_serde().unwrap(),
                     Err(_) => SpotifyDevicesResponse { devices: Vec::new() },
                 };
 
-                console::log_1(&format!("Devices {:?}", devices).into());
+                // check if devices still exist
+                devices.borrow_mut().retain(|registered_device| {
+                    if !available_devices.devices.iter().any(|d| &d.id == registered_device.get_device_id()) {
+                        let accessories = PlatformAccessories::of(registered_device.get_accessory());
 
-                // let device_id = "test".to_string();
-                // let name = "test".to_string();
-                //
-                // let accessory = SpotifyAccessory::new(
-                //     service,
-                //     name,
-                //     device_id,
-                //     api);
-                //
-                // let accessories = PlatformAccessories::of(accessory.get_accessory());
-                //
-                // homebridge.register_platform_accessories(
-                //     PLUGIN_IDENTIFIER,
-                //     PLATFORM_NAME,
-                //     accessories.clone()
-                // )
+                        console::log_1(&format!("Unregister Spotify device: {:?}", registered_device.get_accessory()).into());
+
+                        homebridge.unregister_platform_accessories(
+                            PLUGIN_IDENTIFIER,
+                            PLATFORM_NAME,
+                            accessories
+                        );
+
+                        return false;
+                    }
+                    true
+                });
+
+                // check if device already exists, otherwise add
+                for available_device in available_devices.devices {
+                    if !devices.borrow().iter().any(|d| d.get_device_id() == &available_device.id) {
+                        let accessory = SpotifyAccessory::new(
+                            available_device.name,
+                            available_device.id,
+                            api.clone());
+
+                        console::log_1(&format!("Register Spotify device: {:?}", accessory.get_accessory()).into());
+
+                        let accessories = PlatformAccessories::of(accessory.get_accessory());
+
+                        homebridge.register_platform_accessories(
+                            PLUGIN_IDENTIFIER,
+                            PLATFORM_NAME,
+                            accessories.clone()
+                        );
+
+                        devices.borrow_mut().push(accessory);
+                    }
+                }
             });
         }) as Box<dyn FnMut()>);
 
         let _ = set_interval(refresh_closure.as_ref().unchecked_ref(), REFRESH_RATE);
-
         refresh_closure.forget();
     }
 
@@ -178,7 +193,6 @@ impl SpotifyPlatform {
     #[wasm_bindgen(js_name = configureAccessory)]
     pub fn configure_accessory(&mut self, accessory: Accessory) {
         // Called by HomeBridge to restore cached accessories.
-        console::log_1(&format!("Configure accessory {:?}", accessory).into());
         self.cached.borrow_mut().push(accessory);
     }
 }

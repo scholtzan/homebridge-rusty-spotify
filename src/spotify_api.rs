@@ -62,7 +62,7 @@ pub struct SpotifyDevicesResponse {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// Represents the Spotify API and state.
 pub struct SpotifyApi {
     client_id: String,
