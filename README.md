@@ -30,7 +30,6 @@ $ ./generate_config --help
 usage: generate_config [-h] [--client_id CLIENT_ID]
                        [--client_secret CLIENT_SECRET]
                        [--redirect_uri REDIRECT_URI] [--username USERNAME]
-                       [--device_id [DEVICE_ID]]
 
 Script to retrieve an access and refresh token for using the Spotify API
 
@@ -43,18 +42,15 @@ optional arguments:
   --redirect_uri REDIRECT_URI, --redirect-uri REDIRECT_URI
                         Redirect URI
   --username USERNAME   Spotify username
-  --device_id [DEVICE_ID], --device-id [DEVICE_ID]
-                        Device ID
 
 
-$ ./generate_config --client_id=<client_id> --client_secret=<client_secret> --username=<username> --device_id=<device_id>
+$ ./generate_config --client_id=<client_id> --client_secret=<client_secret> --username=<username>
   {
-    "accessory": "Spotify",
+    "platform": "Spotify",
     "name": "Spotify",
     "client_id": "<client_id>",
     "client_secret": "<client_secret>",
-    "refresh_token": "<refresh_token>",
-    "device_id": "<device_id>"
+    "refresh_token": "<refresh_token>"
   }
 ```
 
@@ -64,12 +60,11 @@ The generated config needs to copied to the Homebridge config file (e.g. `~/.hom
 //...
 "accessories": [
   {
-    "accessory": "Spotify",
+    "platform": "Spotify",
     "name": "Spotify",
     "client_id": "<client_id>",
     "client_secret": "<client_secret>",
     "refresh_token": "<refresh_token>",
-    "device_id": "<device_id>"
   }
 ]
 //...
@@ -77,8 +72,12 @@ The generated config needs to copied to the Homebridge config file (e.g. `~/.hom
 
 ## Usage
 
-Add the accessory in the Home app. Turning the Spotify accessory on will resume playing music on Spotify, turning off the
+Add the plugin in the Home app. The plugin will automatically discover available Spotify 
+devices and add them as accessories.
+Turning a Spotify accessory on will resume playing music on the device, turning off the
 accessory will pause the music. The accessory also allows to change the playback volume.
+
+Accessories get refreshed every 10 seconds (or as specified in the configuration file).
 
 ## Development
 
