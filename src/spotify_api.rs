@@ -2,7 +2,7 @@
 
 use crate::node_fetch::{fetch, FetchMethod};
 use base64::encode;
-use js_sys::{Date, Promise, Array};
+use js_sys::{Date, Promise};
 use std::collections::HashMap;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -13,7 +13,7 @@ use web_sys::console;
 /// The Spotify API access token needs to be refreshed after 50 minutes.
 const ACCESS_TOKEN_LIFETIME: f64 = 3000.0;
 /// Path to the Homebridge config file.
-const HOMEBRIDGE_CONFIG: &str = "~/.homebridge/config.json";
+const HOMEBRIDGE_CONFIG: &str = "~/.homebridge/config.json"; // todo: tilde not supported
 
 #[wasm_bindgen]
 extern "C" {
@@ -30,7 +30,7 @@ extern "C" {
 
 #[derive(Serialize, Deserialize)]
 /// Represents the response when making an authorization request.
-struct SpotifyAuthorizationResponse {
+struct SpotifyAuthorization {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: u64,
@@ -49,7 +49,7 @@ pub struct SpotifyDevice {
 
 #[derive(Serialize, Deserialize)]
 /// Represents the response when requesting the playback state.
-struct SpotifyPlaybackResponse {
+struct SpotifyPlayback {
     pub device: SpotifyDevice,
     pub is_playing: bool,
     // ... more attributes ...
@@ -57,8 +57,8 @@ struct SpotifyPlaybackResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 /// Represents a list of available Spotify devices
-pub struct SpotifyDevicesResponse {
-    pub devices: Vec<SpotifyDevice>
+pub struct SpotifyDevices {
+    pub devices: Vec<SpotifyDevice>,
 }
 
 #[wasm_bindgen]
@@ -121,10 +121,8 @@ impl SpotifyApi {
     }
 
     /// Make a request to pause Spotify.
-    pub fn pause(&self) -> Promise {
+    pub fn pause(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
-
-        // todo: device
 
         future_to_promise(async move {
             console::log_1(&"Stop playback".into());
@@ -132,13 +130,14 @@ impl SpotifyApi {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
 
-                    let url = "https://api.spotify.com/v1/me/player/pause";
+                    let mut url = "https://api.spotify.com/v1/me/player/pause".to_string();
+                    url.push_str(&format!("?device_id={}", device_id));
                     let authorization_header = format!("Bearer {}", access_token);
 
                     let mut headers = HashMap::new();
                     headers.insert("Authorization".to_owned(), authorization_header);
 
-                    match fetch(url, FetchMethod::Put, "", headers, true).await {
+                    match fetch(&url, FetchMethod::Put, "", headers, true).await {
                         Err(e) => {
                             console::log_1(&format!("Error stopping playback: {:?}", e).into())
                         }
@@ -154,7 +153,7 @@ impl SpotifyApi {
         })
     }
 
-    /// Check if Spotify is currently playing; optionally check for a specific device
+    /// Check if Spotify device is currently playing.
     pub fn is_playing(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
 
@@ -165,19 +164,23 @@ impl SpotifyApi {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
 
-                    let url = "https://api.spotify.com/v1/me/player";
+                    let mut url = "https://api.spotify.com/v1/me/player".to_string();
+                    url.push_str(&format!("?device_id={}", device_id));
+
                     let authorization_header = format!("Bearer {}", access_token);
 
                     let mut headers = HashMap::new();
                     headers.insert("Authorization".to_owned(), authorization_header);
 
-                    match fetch(url, FetchMethod::Get, "", headers, false).await {
+                    match fetch(&url, FetchMethod::Get, "", headers, false).await {
                         Err(e) => {
                             console::log_1(&format!("Error getting playback state: {:?}", e).into())
                         }
                         Ok(result) => {
-                            let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
-                            return Ok(JsValue::from(json.is_playing));
+                            let json: SpotifyPlayback = result.into_serde().unwrap();
+                            return Ok(JsValue::from(
+                                json.is_playing && json.device.id == device_id,
+                            ));
                         }
                     }
                 }
@@ -190,7 +193,7 @@ impl SpotifyApi {
         })
     }
 
-    /// Check if Spotify is currently playing; optionally check for a specific device
+    /// Get volume for a specific device.
     pub fn get_volume(&self, device_id: String) -> Promise {
         let authorize_request = self.authorize();
 
@@ -201,18 +204,20 @@ impl SpotifyApi {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
 
-                    let url = "https://api.spotify.com/v1/me/player";
+                    let mut url = "https://api.spotify.com/v1/me/player".to_string();
+                    url.push_str(&format!("?device_id={}", device_id));
+
                     let authorization_header = format!("Bearer {}", access_token);
 
                     let mut headers = HashMap::new();
                     headers.insert("Authorization".to_owned(), authorization_header);
 
-                    match fetch(url, FetchMethod::Get, "", headers, false).await {
+                    match fetch(&url, FetchMethod::Get, "", headers, false).await {
                         Err(e) => {
                             console::log_1(&format!("Error getting volume state: {:?}", e).into())
                         }
                         Ok(result) => {
-                            let json: SpotifyPlaybackResponse = result.into_serde().unwrap();
+                            let json: SpotifyPlayback = result.into_serde().unwrap();
                             return Ok(JsValue::from(json.device.volume_percent));
                         }
                     }
@@ -226,11 +231,9 @@ impl SpotifyApi {
         })
     }
 
-    /// Make a request to update the volume on the active device.
-    pub fn set_volume(&self, volume: u32) -> Promise {
+    /// Set the volume for a specific device.
+    pub fn set_volume(&self, device_id: String, volume: u32) -> Promise {
         let authorize_request = self.authorize();
-
-        // todo: device
 
         future_to_promise(async move {
             console::log_1(&"Set volume".into());
@@ -238,10 +241,11 @@ impl SpotifyApi {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
 
-                    let url = format!(
+                    let mut url = format!(
                         "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
                         volume
                     );
+                    url.push_str(&format!("?device_id={}", device_id));
                     let authorization_header = format!("Bearer {}", access_token);
 
                     let mut headers = HashMap::new();
@@ -261,7 +265,7 @@ impl SpotifyApi {
         })
     }
 
-    /// Check if Spotify is currently playing; optionally check for a specific device
+    /// Get available Spotify devices.
     pub fn get_devices(&self) -> Promise {
         let authorize_request = self.authorize();
 
@@ -298,8 +302,6 @@ impl SpotifyApi {
 
     /// Make an authorization request.
     pub fn authorize(&self) -> Promise {
-        console::log_1(&"Authorize to Spotify".into());
-
         let mut refresh_token = Rc::clone(&self.refresh_token);
         let mut access_token = Rc::clone(&self.access_token);
         let mut access_token_timestamp = Rc::clone(&self.access_token_timestamp);
@@ -324,13 +326,14 @@ impl SpotifyApi {
             }
 
             if let Ok(result) = fetch(url, FetchMethod::Post, &body, headers, false).await {
-                let json: Result<SpotifyAuthorizationResponse, _> = result.into_serde();
+                let json: Result<SpotifyAuthorization, _> = result.into_serde();
 
                 return match json {
                     Ok(json) => {
                         access_token_timestamp = Rc::new(Date::now());
                         access_token = Rc::new(json.access_token.clone());
 
+                        // todo: never called, and if then it'll fail
                         if let Some(new_refresh_token) = json.refresh_token {
                             // cache refresh token
                             let fs = require("fs");
@@ -350,7 +353,7 @@ impl SpotifyApi {
                         );
                         Err(JsValue::from(format!("Error while retrieving access token from Spotify API. Response was: {:?}", result)))
                     }
-                }
+                };
             } else {
                 Err(JsValue::from("Error executing fetch request"))
             }

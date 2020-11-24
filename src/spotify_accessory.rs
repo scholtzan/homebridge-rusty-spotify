@@ -6,10 +6,8 @@ use js_sys::Function;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::console;
 
 use crate::spotify_platform::Service;
 
@@ -26,6 +24,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = setValue)]
     fn set_value(this: &Characteristic, value: &str);
 
+    #[wasm_bindgen(method, js_name = getValue)]
+    fn get_value(this: &Characteristic);
+
     #[derive(Debug, PartialEq)]
     pub type Accessory;
 
@@ -34,9 +35,6 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = addService)]
     fn add_service(this: &Accessory, service: &Service);
-
-    #[wasm_bindgen(method, js_name = getService)]
-    fn get_service(this: &Accessory, name: &str) -> Service;
 
     #[wasm_bindgen(method, getter = UUID)]
     pub fn get_uuid(this: &Accessory) -> String;
@@ -63,7 +61,7 @@ pub struct SpotifyAccessory {
     /// Accessory display name
     name: String,
     /// Accessory to be registered to Homebridge
-    accessory: Accessory
+    accessory: Accessory,
 }
 
 impl SpotifyAccessory {
@@ -76,7 +74,7 @@ impl SpotifyAccessory {
             api,
             device_id,
             name,
-            accessory
+            accessory,
         };
 
         spotify_accessory.apply_characteristics();
@@ -85,14 +83,25 @@ impl SpotifyAccessory {
         spotify_accessory
     }
 
+    /// Return the Spotify device ID.
     pub fn get_device_id(&self) -> &str {
         &self.device_id
     }
 
+    /// Return the Homebridge accessory.
     pub fn get_accessory(&self) -> &Accessory {
         &self.accessory
     }
 
+    /// Manually check if the device is playing.
+    /// Homekit only checks when the app gets opened, so if the
+    /// status changes while the app is open, the status is not
+    /// reflected correctly.
+    pub fn check_on(&self) {
+        self.service.get_characteristic("On").get_value();
+    }
+
+    /// Setup up Homebridge characteristics.
     fn apply_characteristics(&self) {
         let get_on = self.get_on();
         let set_on = self.set_on();
@@ -110,7 +119,9 @@ impl SpotifyAccessory {
             .on("set", set_volume.as_ref().unchecked_ref())
             .on("get", get_volume.as_ref().unchecked_ref());
 
-        self.service.get_characteristic("Name").set_value(&self.name);
+        self.service
+            .get_characteristic("Name")
+            .set_value(&self.name);
 
         get_on.forget();
         set_on.forget();
@@ -118,6 +129,7 @@ impl SpotifyAccessory {
         get_volume.forget();
     }
 
+    /// Connect service with accessory.
     fn apply_service(&self) {
         self.accessory.add_service(&self.service)
     }
@@ -156,7 +168,7 @@ impl SpotifyAccessory {
             if new_on {
                 let _ = api.play(device_id.clone());
             } else {
-                let _ = api.pause();
+                let _ = api.pause(device_id.clone());
             }
 
             callback
@@ -196,10 +208,10 @@ impl SpotifyAccessory {
     /// Closure for setting the volume.
     fn set_volume(&self) -> Closure<dyn FnMut(u32, Function)> {
         let api = Rc::clone(&self.api);
-        // todo: device
+        let device_id = self.device_id.clone();
 
         Closure::wrap(Box::new(move |new_volume: u32, callback: Function| {
-            let _ = api.set_volume(new_volume);
+            let _ = api.set_volume(device_id.clone(), new_volume);
 
             callback
                 .apply(
