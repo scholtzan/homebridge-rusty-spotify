@@ -284,7 +284,7 @@ impl SpotifyApi {
 
                     match fetch(url, FetchMethod::Get, "", headers, false).await {
                         Err(e) => {
-                            console::log_1(&format!("Error getting volume state: {:?}", e).into())
+                            console::log_1(&format!("Error getting devices: {:?}", e).into())
                         }
                         Ok(result) => {
                             return Ok(result);

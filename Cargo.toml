@@ -18,15 +18,7 @@ wasm-bindgen-futures = "0.4.10"
 
 [dependencies.web-sys]
 version = "0.3.4"
-features = [
-  'console',
-  'Headers',
-  'Request',
-  'RequestInit',
-  'RequestMode',
-  'Response',
-  'Window',
-]
+features = ['console']
 
 [dependencies.wasm-bindgen]
 version = "0.2.60"

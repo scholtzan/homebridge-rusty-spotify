@@ -19,9 +19,7 @@ The plugin requires a Spotify Premium account.
 ### Configuration
 
 The `generate_config` script can be used to generate the config. It requires for the `client_id`, `client_secret` and
-Spotify `username` to be set since those are required to authenticate to the Spotify Web API. Optionally, a device ID can
-be specified of the device that should be controlled by the plugin. If no device is specified, the device used last
-will be controlled.
+Spotify `username` needs to be set since those are required to authenticate to the Spotify Web API.
 
 Running the script will open a web browser asking to authenticate to Spotify which is required to retrieve the `refresh_token`.
 
@@ -58,7 +56,7 @@ The generated config needs to copied to the Homebridge config file (e.g. `~/.hom
 
 ```json
 //...
-"accessories": [
+"platforms": [
   {
     "platform": "Spotify",
     "name": "Spotify",
