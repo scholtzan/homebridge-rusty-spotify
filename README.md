@@ -86,3 +86,5 @@ Accessories get refreshed every 10 seconds (or as specified in the configuration
 1. Copy the generated files to a device/directory that can be discovered by Homebridge
 1. Switch to the directory and run `npm install` to install all required dependencies
 1. Run Homebridge in debug mode and specify the directory with the plugin files: `DEBUG=* homebridge -D  -P /path/to/plugin/homebridge-rusty-spotify`
+
+A blog post about writing plugins for Homebridge and specifically this plugin has been published [here](https://scholtzan.net/blog/homebridge-rusty-spotify/). 
