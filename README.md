@@ -46,6 +46,7 @@ $ ./generate_config --client_id=<client_id> --client_secret=<client_secret> --us
   {
     "platform": "Spotify",
     "name": "Spotify",
+    "service_type": "light",    // "light" or "speaker"; Speaker is not supported by HomeKit
     "client_id": "<client_id>",
     "client_secret": "<client_secret>",
     "refresh_token": "<refresh_token>"
@@ -60,6 +61,7 @@ The generated config needs to copied to the Homebridge config file (e.g. `~/.hom
   {
     "platform": "Spotify",
     "name": "Spotify",
+    "service_type": "light",    // "light" or "speaker"; Speaker is not supported by HomeKit
     "client_id": "<client_id>",
     "client_secret": "<client_secret>",
     "refresh_token": "<refresh_token>",
@@ -67,6 +69,10 @@ The generated config needs to copied to the Homebridge config file (e.g. `~/.hom
 ]
 //...
 ```
+
+`service_type` specifies whether Spotify devices should use the [Lightbulb](https://developers.homebridge.io/#/service/Lightbulb)
+or [Speaker](https://developers.homebridge.io/#/service/Speaker) service. If `service_type` is not specified, `"light"` will be used by default.
+HomeKit currently does not support Speaker services and will show _"This accessory is not certified and may not work reliably with HomeKit"_. 
 
 ## Usage
 
