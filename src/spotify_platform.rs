@@ -56,6 +56,15 @@ extern "C" {
     pub fn set_interval(closure: &Function, millis: u32) -> f64;
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+/// Service used for accessories. HomeKit doesn't support Speaker, instead use Light.
+pub enum ServiceType {
+    #[serde(rename = "light")]
+    Light,
+    #[serde(rename = "speaker")]
+    Speaker,
+}
+
 #[derive(Serialize, Deserialize)]
 /// Represents the platform configuration retrieved from ~/.homebridge/config.json
 struct Config {
@@ -67,6 +76,8 @@ struct Config {
     pub refresh_token: String,
     /// Device refresh rate
     pub refresh_rate: Option<u32>,
+    /// Service type for new accessories
+    pub service_type: Option<ServiceType>,
 }
 
 #[wasm_bindgen]
@@ -115,12 +126,20 @@ impl SpotifyPlatform {
         let api = self.api.clone();
         let cached = self.cached_devices.clone();
         let devices = self.devices.clone();
+        let service_type = if self.config.service_type.is_some() {
+            self.config.service_type.clone().unwrap()
+        } else {
+            // use light as the default service type since it is supported
+            // by most platforms.
+            ServiceType::Light
+        };
 
         let refresh_closure = Closure::wrap(Box::new(move || {
             let homebridge = homebridge.clone();
             let api = api.clone();
             let cached = cached.clone();
             let devices = devices.clone();
+            let service_type = service_type.clone();
 
             spawn_local(async move {
                 Self::remove_cached(&homebridge, cached);
@@ -172,6 +191,7 @@ impl SpotifyPlatform {
                         let accessory = SpotifyAccessory::new(
                             available_device.name,
                             available_device.id,
+                            service_type.clone(),
                             api.clone(),
                         );
 

@@ -9,7 +9,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
 
-use crate::spotify_platform::Service;
+use crate::spotify_platform::{Service, ServiceType};
 
 #[wasm_bindgen]
 extern "C" {
@@ -44,8 +44,11 @@ extern "C" {
     #[wasm_bindgen(static_method_of = UUIDGen)]
     fn generate(uuid_base: &str) -> String;
 
-    #[wasm_bindgen(js_name = createSwitch)]
-    pub fn create_switch(name: &str) -> Service;
+    #[wasm_bindgen(js_name = createLight)]
+    pub fn create_light(name: &str) -> Service;
+
+    #[wasm_bindgen(js_name = createSpeaker)]
+    pub fn create_speaker(name: &str) -> Service;
 }
 
 #[wasm_bindgen]
@@ -62,19 +65,32 @@ pub struct SpotifyAccessory {
     name: String,
     /// Accessory to be registered to Homebridge
     accessory: Accessory,
+    /// Homebridge service type
+    service_type: ServiceType,
 }
 
 impl SpotifyAccessory {
-    pub fn new(name: String, device_id: String, api: Rc<SpotifyApi>) -> SpotifyAccessory {
+    pub fn new(
+        name: String,
+        device_id: String,
+        service_type: ServiceType,
+        api: Rc<SpotifyApi>,
+    ) -> SpotifyAccessory {
         // accessory type that can get registered to Homebridge
         let accessory = Accessory::new(&name, &UUIDGen::generate(&name));
 
+        let service = match service_type {
+            ServiceType::Light => create_light(&name),
+            ServiceType::Speaker => create_speaker(&name),
+        };
+
         let spotify_accessory = SpotifyAccessory {
-            service: create_switch(&name),
+            service,
             api,
             device_id,
             name,
             accessory,
+            service_type,
         };
 
         spotify_accessory.apply_characteristics();
@@ -106,18 +122,34 @@ impl SpotifyAccessory {
         let get_on = self.get_on();
         let set_on = self.set_on();
 
-        self.service
-            .get_characteristic("On")
-            .on("set", set_on.as_ref().unchecked_ref())
-            .on("get", get_on.as_ref().unchecked_ref());
+        match self.service_type {
+            ServiceType::Light => self
+                .service
+                .get_characteristic("On")
+                .on("set", set_on.as_ref().unchecked_ref())
+                .on("get", get_on.as_ref().unchecked_ref()),
+            ServiceType::Speaker => self
+                .service
+                .get_characteristic("Mute")
+                .on("set", set_on.as_ref().unchecked_ref())
+                .on("get", get_on.as_ref().unchecked_ref()),
+        };
 
         let get_volume = self.get_volume();
         let set_volume = self.set_volume();
 
-        self.service
-            .get_characteristic("Brightness")
-            .on("set", set_volume.as_ref().unchecked_ref())
-            .on("get", get_volume.as_ref().unchecked_ref());
+        match self.service_type {
+            ServiceType::Light => self
+                .service
+                .get_characteristic("Brightness")
+                .on("set", set_volume.as_ref().unchecked_ref())
+                .on("get", get_volume.as_ref().unchecked_ref()),
+            ServiceType::Speaker => self
+                .service
+                .get_characteristic("Volume")
+                .on("set", set_volume.as_ref().unchecked_ref())
+                .on("get", get_volume.as_ref().unchecked_ref()),
+        };
 
         self.service
             .get_characteristic("Name")
@@ -163,12 +195,28 @@ impl SpotifyAccessory {
     fn set_on(&self) -> Closure<dyn FnMut(bool, Function)> {
         let api = Rc::clone(&self.api);
         let device_id = self.device_id.clone();
+        let service_type = self.service_type.clone();
 
         Closure::wrap(Box::new(move |new_on: bool, callback: Function| {
-            if new_on {
-                let _ = api.play(device_id.clone());
-            } else {
-                let _ = api.pause(device_id.clone());
+            match service_type {
+                ServiceType::Light => {
+                    if new_on {
+                        let _ = api.play(device_id.clone());
+                    } else {
+                        let _ = api.pause(device_id.clone());
+                    }
+                }
+                ServiceType::Speaker => {
+                    // speaker uses the Mute characteristic which is basically
+                    // the inverse of on/off for play/pause
+                    // Mute on == pause
+                    // Mute off == play
+                    if new_on {
+                        let _ = api.pause(device_id.clone());
+                    } else {
+                        let _ = api.play(device_id.clone());
+                    }
+                }
             }
 
             callback
