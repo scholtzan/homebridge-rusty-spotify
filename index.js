@@ -10,11 +10,17 @@ module.exports = function(homebridge) {
   UUIDGen = homebridge.hap.uuid;
   Characteristic = homebridge.hap.Characteristic;
 
-  createSwitch = function(name) {
+  createLight = function(name) {
     let newSwitch = new Service.Lightbulb(name);
     // we'll use brightness to control the volume
     newSwitch.addCharacteristic(Characteristic.Brightness);
     return newSwitch;
+  }
+
+  createSpeaker = function(name) {
+    let newSpeaker = new Service.Speaker(name);
+    newSpeaker.addCharacteristic(Characteristic.Volume);
+    return newSpeaker;
   }
 
   constructor = partial(SpotifyPlatform, homebridge);
