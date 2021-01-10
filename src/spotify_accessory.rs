@@ -192,7 +192,7 @@ impl SpotifyAccessory {
             spawn_local(async move {
                 let volume: u32 = match JsFuture::from(api.get_volume(device_id)).await {
                     Ok(state) => (state.as_f64().unwrap() as u32),
-                    Err(_) => 100,
+                    Err(_) => 50,
                 };
 
                 callback

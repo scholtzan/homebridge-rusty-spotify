@@ -90,8 +90,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Start playback".into());
-
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -116,7 +114,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::NULL)
+            Err(JsValue::from("Error starting playback"))
         })
     }
 
@@ -125,7 +123,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Stop playback".into());
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -149,7 +146,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::NULL)
+            Err(JsValue::from("Error pausing playback"))
         })
     }
 
@@ -158,8 +155,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Check playback state".into());
-
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -189,7 +184,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::FALSE)
+            Err(JsValue::from("Error fetching play state"))
         })
     }
 
@@ -198,8 +193,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Check playback state".into());
-
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -227,7 +220,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::from(100))
+            Err(JsValue::from("Error fetching volume"))
         })
     }
 
@@ -236,7 +229,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Set volume".into());
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -245,7 +237,7 @@ impl SpotifyApi {
                         "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
                         volume
                     );
-                    url.push_str(&format!("?device_id={}", device_id));
+                    url.push_str(&format!("&device_id={}", device_id));
                     let authorization_header = format!("Bearer {}", access_token);
 
                     let mut headers = HashMap::new();
@@ -261,7 +253,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::NULL)
+            Err(JsValue::from("Error updating volume"))
         })
     }
 
@@ -270,8 +262,6 @@ impl SpotifyApi {
         let authorize_request = self.authorize();
 
         future_to_promise(async move {
-            console::log_1(&"Get available devices".into());
-
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
                     let access_token: String = authorize_request.as_string().unwrap();
@@ -283,9 +273,7 @@ impl SpotifyApi {
                     headers.insert("Authorization".to_owned(), authorization_header);
 
                     match fetch(url, FetchMethod::Get, "", headers, false).await {
-                        Err(e) => {
-                            console::log_1(&format!("Error getting devices: {:?}", e).into())
-                        }
+                        Err(e) => console::log_1(&format!("Error getting devices: {:?}", e).into()),
                         Ok(result) => {
                             return Ok(result);
                         }
@@ -296,7 +284,7 @@ impl SpotifyApi {
                 ),
             }
 
-            Ok(JsValue::null())
+            Err(JsValue::from("Error fetching devices"))
         })
     }
 
