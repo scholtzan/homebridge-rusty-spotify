@@ -56,7 +56,7 @@ def main():
     config = {
         "platform": "Spotify",
         "name": "Spotify",
-        "service_type": "light",    // "light" or "speaker"; Speaker is not supported by HomeKit
+        "service_type": "light",    # "light" or "speaker"; Speaker is not supported by HomeKit
         "client_id": args.client_id,
         "client_secret": args.client_secret,
         "refresh_token": token_info["refresh_token"]
