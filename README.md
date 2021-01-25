@@ -28,6 +28,7 @@ $ ./generate_config --help
 usage: generate_config [-h] [--client_id CLIENT_ID]
                        [--client_secret CLIENT_SECRET]
                        [--redirect_uri REDIRECT_URI] [--username USERNAME]
+                       [--open_browser True/False]
 
 Script to retrieve an access and refresh token for using the Spotify API
 
@@ -40,9 +41,10 @@ optional arguments:
   --redirect_uri REDIRECT_URI, --redirect-uri REDIRECT_URI
                         Redirect URI
   --username USERNAME   Spotify username
+  --open_browser True/False True opens browser window, false allows for headless operation.
 
 
-$ ./generate_config --client_id=<client_id> --client_secret=<client_secret> --username=<username>
+$ ./generate_config --client_id=<client_id> --client_secret=<client_secret> --username=<username> --open_browser=True
   {
     "platform": "Spotify",
     "name": "Spotify",
@@ -77,9 +79,11 @@ HomeKit currently does not support Speaker services and will show _"This accesso
 ## Usage
 
 Add the plugin in the Home app. The plugin will automatically discover available Spotify 
-devices and add them as accessories.
-Turning a Spotify accessory on will resume playing music on the device, turning off the
-accessory will pause the music. The accessory also allows to change the playback volume.
+devices and add them as accessories. If using a headless Raspberry Pi install, use the
+headless option, copy and paste the url that appears at each step into a browser, and 
+follow the instructions shown on each webpage. Turning a Spotify accessory on will 
+resume playing music on the device, turning off theaccessory will pause the music. 
+The accessory also allows to change the playback volume.
 
 Accessories get refreshed every 10 seconds (or as specified in the configuration file).
 
