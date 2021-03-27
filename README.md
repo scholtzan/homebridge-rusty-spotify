@@ -23,7 +23,10 @@ Spotify `username` needs to be set since those are required to authenticate to t
 
 Running the script will open a web browser asking to authenticate to Spotify which is required to retrieve the `refresh_token`.
 
+If you're running the script on a headless machine, a browser won't open. To solve this, export the `BROWSER` env as `echo` so the URL is printed in your shell. When that URL is printed, copy it into your desktop browser and then follow the steps.
+
 ```bash
+$ # export BROWSER=echo # do this when running on headless server
 $ ./generate_config --help
 usage: generate_config [-h] [--client_id CLIENT_ID]
                        [--client_secret CLIENT_SECRET]
