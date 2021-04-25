@@ -99,7 +99,7 @@ pub struct SpotifyPlatform {
 impl SpotifyPlatform {
     #[wasm_bindgen(constructor)]
     pub fn new(homebridge: Homebridge, _log: Function, config: &JsValue) -> SpotifyPlatform {
-        let config: Config = config.into_serde().unwrap();
+        let config: Config = config.into_serde().expect("Error loading config.");
 
         let api = SpotifyApi::new(
             config.client_id.clone(),
@@ -127,7 +127,10 @@ impl SpotifyPlatform {
         let cached = self.cached_devices.clone();
         let devices = self.devices.clone();
         let service_type = if self.config.service_type.is_some() {
-            self.config.service_type.clone().unwrap()
+            self.config
+                .service_type
+                .clone()
+                .expect("Error creating homebridge-rusty-spotify service.")
         } else {
             // use light as the default service type since it is supported
             // by most platforms.
@@ -146,7 +149,9 @@ impl SpotifyPlatform {
 
                 let available_devices: SpotifyDevices =
                     match JsFuture::from(api.get_devices()).await {
-                        Ok(state) => state.into_serde().unwrap(),
+                        Ok(state) => state.into_serde().unwrap_or(SpotifyDevices {
+                            devices: Vec::new(),
+                        }),
                         Err(_) => SpotifyDevices {
                             devices: Vec::new(),
                         },

@@ -177,7 +177,7 @@ impl SpotifyAccessory {
 
             spawn_local(async move {
                 let on = match JsFuture::from(api.is_playing(device_id)).await {
-                    Ok(state) => state.as_bool().unwrap(),
+                    Ok(state) => state.as_bool().unwrap_or(false),
                     Err(_) => false,
                 };
 
@@ -186,7 +186,7 @@ impl SpotifyAccessory {
                         &JsValue::null(),
                         &Array::of2(&JsValue::null(), &JsValue::from(on)),
                     )
-                    .unwrap();
+                    .ok();
             });
         }) as Box<dyn FnMut(Function)>)
     }
@@ -224,7 +224,7 @@ impl SpotifyAccessory {
                     &JsValue::null(),
                     &Array::of2(&JsValue::null(), &JsValue::from(new_on)),
                 )
-                .unwrap();
+                .ok();
         }) as Box<dyn FnMut(bool, Function)>)
     }
 
@@ -239,7 +239,7 @@ impl SpotifyAccessory {
 
             spawn_local(async move {
                 let volume: u32 = match JsFuture::from(api.get_volume(device_id)).await {
-                    Ok(state) => (state.as_f64().unwrap() as u32),
+                    Ok(state) => (state.as_f64().unwrap_or(50.0) as u32),
                     Err(_) => 50,
                 };
 
@@ -248,7 +248,7 @@ impl SpotifyAccessory {
                         &JsValue::null(),
                         &Array::of2(&JsValue::null(), &JsValue::from(volume)),
                     )
-                    .unwrap();
+                    .ok();
             });
         }) as Box<dyn FnMut(Function)>)
     }
@@ -266,7 +266,7 @@ impl SpotifyAccessory {
                     &JsValue::null(),
                     &Array::of2(&JsValue::null(), &JsValue::from(new_volume)),
                 )
-                .unwrap();
+                .ok();
         }) as Box<dyn FnMut(u32, Function)>)
     }
 }
