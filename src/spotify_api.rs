@@ -92,7 +92,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let mut url = "https://api.spotify.com/v1/me/player/play".to_owned();
                     url.push_str(&format!("?device_id={}", device_id));
@@ -125,7 +127,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let mut url = "https://api.spotify.com/v1/me/player/pause".to_string();
                     url.push_str(&format!("?device_id={}", device_id));
@@ -157,7 +161,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let mut url = "https://api.spotify.com/v1/me/player".to_string();
                     url.push_str(&format!("?device_id={}", device_id));
@@ -168,15 +174,21 @@ impl SpotifyApi {
                     headers.insert("Authorization".to_owned(), authorization_header);
 
                     match fetch(&url, FetchMethod::Get, "", headers, false).await {
-                        Err(e) => {
-                            console::log_1(&format!("Error getting playback state: {:?}", e).into())
-                        }
                         Ok(result) => {
-                            let json: SpotifyPlayback = result.into_serde().unwrap();
-                            return Ok(JsValue::from(
-                                json.is_playing && json.device.id == device_id,
-                            ));
+                            let json_response: Result<SpotifyPlayback, _> = result.into_serde();
+
+                            match json_response {
+                                Ok(json) => {
+                                    return Ok(JsValue::from(
+                                        json.is_playing && json.device.id == device_id,
+                                    ))
+                                }
+                                Err(_) => {
+                                    return Err(JsValue::from("Error fetching playback data"))
+                                }
+                            }
                         }
+                        _ => {}
                     }
                 }
                 Err(e) => console::log_1(
@@ -195,7 +207,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let mut url = "https://api.spotify.com/v1/me/player".to_string();
                     url.push_str(&format!("?device_id={}", device_id));
@@ -210,8 +224,14 @@ impl SpotifyApi {
                             console::log_1(&format!("Error getting volume state: {:?}", e).into())
                         }
                         Ok(result) => {
-                            let json: SpotifyPlayback = result.into_serde().unwrap();
-                            return Ok(JsValue::from(json.device.volume_percent));
+                            let json_response: Result<SpotifyPlayback, _> = result.into_serde();
+
+                            match json_response {
+                                Ok(json) => return Ok(JsValue::from(json.device.volume_percent)),
+                                Err(_) => {
+                                    return Err(JsValue::from("Error fetching playback data"))
+                                }
+                            }
                         }
                     }
                 }
@@ -231,7 +251,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let mut url = format!(
                         "https://api.spotify.com/v1/me/player/volume?volume_percent={}",
@@ -264,7 +286,9 @@ impl SpotifyApi {
         future_to_promise(async move {
             match JsFuture::from(authorize_request).await {
                 Ok(authorize_request) => {
-                    let access_token: String = authorize_request.as_string().unwrap();
+                    let access_token: String = authorize_request
+                        .as_string()
+                        .expect("Error authenticating to Spotify API");
 
                     let url = "https://api.spotify.com/v1/me/player/devices";
                     let authorization_header = format!("Bearer {}", access_token);
