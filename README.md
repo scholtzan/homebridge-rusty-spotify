@@ -19,7 +19,9 @@ The plugin requires a Spotify Premium account.
 ### Configuration
 
 The `generate_config` script can be used to generate the config. It requires for the `client_id`, `client_secret` and
-Spotify `username` needs to be set since those are required to authenticate to the Spotify Web API.
+Spotify `username` needs to be set since those are required to authenticate to the Spotify Web API. To run the script,
+make sure to have [Python 3](https://www.python.org/download/releases/3.0/) and the [spotipy](https://pypi.org/project/spotipy/)
+library installed.
 
 Running the script will open a web browser asking to authenticate to Spotify which is required to retrieve the `refresh_token`.
 
